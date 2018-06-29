@@ -16,7 +16,7 @@ class zfs_fs(object):
     '''
     def __init__(self,fs,connection):
         '''
-        Welches FS und worübererreichen wir das
+        Welches FS und worüber erreichen wir das
         '''
         pass
 
