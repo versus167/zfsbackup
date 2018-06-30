@@ -19,7 +19,13 @@ class zfs_fs(object):
         Welches FS und worüber erreichen wir das
         '''
         pass
-
+    def getlastsnap(self):
+        pass
+    def takenextsnap(self):
+        pass
+    def getoldsnap(self):
+        pass
+    
 
 class zfs_back(object):
     '''
