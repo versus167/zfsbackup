@@ -37,14 +37,21 @@ class zfs_fs(object):
         '''
         self.fs = fs
         self.connection = connection
-        self.lastsnap = -1
+        self.__getsnaplist()
         pass
-    def getlastsnap(self):
+
+    def get_lastsnap(self):
+        if len(self.snaplist) == 0:
+            return 0
+        return self.snaplist[-1:]
+        return self.__lastsnap
+
+    def __getsnaplist(self):
+        self.snaplist = []
         ret = subrun('zfs list -H -t snapshot -o name',stdout=subprocess.PIPE,universal_newlines=True)
         ret.check_returncode()
         if ret.stdout == None:
-            self.lastsnap = 0
-            return 0
+            return
         vgl = self.fs+'@'+SNAPPREFIX+'_'
         l = len(vgl)
         listesnaps = []
@@ -53,12 +60,9 @@ class zfs_fs(object):
             if snp[0:l] == vgl:
                 listesnaps.append(int(snp[l:]))
         if len(listesnaps) == 0:
-            self.lastsnap = 0
-            return 0 
-        listesnaps.sort()
-        self.lastsnap = listesnaps[-1:][0]
-        return self.lastsnap
-        pass
+            return
+        self.snaplist = listesnaps.sort()
+        
     def takenextsnap(self):
         nr = self.getlastsnap()+1
         ret = subrun('zfs snapshot '+self.fs+'@'+SNAPPREFIX+'_'+str(nr))
@@ -67,6 +71,7 @@ class zfs_fs(object):
         pass
     def getoldsnap(self):
         pass
+    lastsnap = property(get_lastsnap, None, None, None)
     
 
 class zfs_back(object):
