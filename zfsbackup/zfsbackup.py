@@ -52,6 +52,9 @@ class zfs_fs(object):
             snp = i
             if snp[0:l] == vgl:
                 listesnaps.append(int(snp[l:]))
+        if len(listesnaps) == 0:
+            self.lastsnap = 0
+            return 0 
         listesnaps.sort()
         self.lastsnap = listesnaps[-1:][0]
         return self.lastsnap
@@ -77,6 +80,9 @@ class zfs_back(object):
         Constructor
         '''
 if __name__ == '__main__':
-    a = zfs_fs('tank/orig')
-    print(a.getlastsnap())
-    a.takenextsnap()
+    src = zfs_fs('vs2016/orig')
+    print(src.getlastsnap())
+    #a.takenextsnap()
+    dst = zfs_fs('vs2016/back')
+    print(dst.getlastsnap())
+    
