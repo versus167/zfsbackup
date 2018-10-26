@@ -70,7 +70,7 @@ class zfs_fs(object):
         if len(self.snaplist) == 0:
             return 0
         return self.snaplist[-1:][0]
-        return self.__lastsnap
+        
 
     def __getsnaplist(self):
         self.snaplist = []
@@ -129,7 +129,9 @@ class zfs_back(object):
         
     def cleansnaps(self):
         '''
-        Soll von src und dest alle Snapshots löschen - bis auf die neuesten 5
+        Soll von src und dest alle Snapshots löschen - bis auf die neuesten
+        
+        für dest soll das jetzt nicht mehr funzen, damit die Rechte nicht überstrapaziert werden
         '''
         l1 = len(self.src.snaplist)
         if l1 > HOLDSNAPS:
@@ -137,5 +139,5 @@ class zfs_back(object):
             for i in self.src.snaplist[0:l1-HOLDSNAPS]:
                 self.src.deletesnap(i)
 if __name__ == '__main__':
-    zfs = zfs_back('vs2016/orig','vs2016/back')
+    zfs = zfs_back('vs3/home','vs3/back')
         
