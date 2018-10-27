@@ -177,7 +177,7 @@ class zfs_back(object):
         if self.dst.lastsnap == '':
             # dann voll senden (erst neuen Snapshot src erstellen) zuvor aber noch token checken
             cmd = sshcmd +' zfs get -H receive_resume_token '+self.dst.fs
-            ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True)
+            ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True,checkretcode=False)
             print(ret.stdout)
             ergeb = ret.stdout.split('\t')
             if len(ergeb[2]) > 1:
