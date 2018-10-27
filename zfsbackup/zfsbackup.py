@@ -19,13 +19,14 @@ haben). Das wäre vlt. die Möglichkeit, das ganze doch noch zu nutzen. Wenn ich
 löschen kann, dann besteht eigentlich auch kein Risiko? 26/10/18  
 
 '''
+from future.backports.test.support import captured_output
 
 APPNAME='zfsbackup'
 VERSION='1 - 2018-06-28'
 SNAPPREFIX = 'zfsbackup'
 HOLDSNAPS = 5 # 5 Backupsnapshots werden behalten
 
-import subprocess,shlex
+import subprocess,shlex, argparse
 import time,os.path,sys
 
 def zeit():
@@ -42,22 +43,37 @@ def subrun(command,quiet=False,checkretcode=True,**kwargs):
     if checkretcode: ret.check_returncode()
     return ret
 
-def subrunPIPE(command,checkretcode=True,**kwargs):
+def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
     '''
     Führt die übergeben Kommandozeile aus und gibt das Ergebnis
     zurück
     '''
-    args = shlex.split(command)
+    args = shlex.split(cmdfrom)
     print(zeit(),' '.join(args))
-    ret = subprocess.run(command,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-    if checkretcode: ret.check_returncode()
-    return ret
+    #ret = subprocess.run(command,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+    #print(ret.stdout)
+    #if checkretcode: ret.check_returncode()
+    argsto = shlex.split(cmdto)
+    print(zeit(),'pipe to -> ',' '.join(argsto))
+    ps = subprocess.Popen(args, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    argsto = shlex.split(cmdto)
+    output = subprocess.check_output(argsto, stdin=ps.stdout)
+    ps.wait()
+    stdout,stderr = ps.communicate()
+    stdr = stderr.decode('utf-8')
+    for i in stdr.split('\n'):
+        print(i)
+    #print(ps.stderr)
+    out = output.decode("utf-8") 
+    for i in out.split('\n'):
+        print(i)
+    #return ret
 
 class zfs_fs(object):
     '''
     Alles rund um das Filesystem direkt
     '''
-    def __init__(self,fs,connection = None):
+    def __init__(self,fs,connection = ''):
         '''
         Welches FS und worüber erreichen wir das
         '''
@@ -74,7 +90,7 @@ class zfs_fs(object):
 
     def __getsnaplist(self):
         self.snaplist = []
-        ret = subrun('zfs list -H -t snapshot -o name',quiet=True,stdout=subprocess.PIPE,universal_newlines=True)
+        ret = subrun(self.connection+' zfs list -H -t snapshot -o name',quiet=True,stdout=subprocess.PIPE,universal_newlines=True)
         ret.check_returncode()
         if ret.stdout == None:
             return
@@ -91,14 +107,14 @@ class zfs_fs(object):
         
     def takenextsnap(self):
         nr = self.lastsnap+1
-        ret = subrun('zfs snapshot '+self.fs+'@'+SNAPPREFIX+'_'+str(nr))
+        ret = subrun(self.connection+' zfs snapshot '+self.fs+'@'+SNAPPREFIX+'_'+str(nr))
         ret.check_returncode()
         self.snaplist.append(nr)
         pass
     def getoldsnap(self):
         pass
     def deletesnap(self,nr):
-        cmd = 'zfs destroy '+self.fs+'@'+SNAPPREFIX+'_'+str(nr)
+        cmd = self.connection+' zfs destroy '+self.fs+'@'+SNAPPREFIX+'_'+str(nr)
         subrun(cmd)
         self.snaplist.remove(nr)
     lastsnap = property(get_lastsnap, None, None, None)
@@ -110,22 +126,52 @@ class zfs_back(object):
     '''
 
 
-    def __init__(self, srcfs,dstfs):
+    def __init__(self, srcfs,dstfs,destserver=None):
         '''
         src und dst anlegen 
         '''
+        if destserver != None:
+            sshcmd = 'ssh -T '+destserver+' sudo '
+        else:
+            sshcmd = ''
         self.src = zfs_fs(srcfs)
-        self.dst = zfs_fs(dstfs)
+        self.dst = zfs_fs(dstfs,sshcmd)
         print('Lastsnap Source: '+str(self.src.lastsnap))
         print('Lastsnap Destination: '+str(self.dst.lastsnap))
+        prev = self.src.lastsnap
         if self.dst.lastsnap == 0:
             # dann voll senden (erst neuen Snapshot src erstellen
             self.src.takenextsnap()
-            cmd = 'zfs send '+self.src.fs+'@'+SNAPPREFIX+'_'+str(self.src.lastsnap)+' | zfs receive '+self.dst.fs
-            ret = subrunPIPE(cmd)
-            # Schlussbehandlung (überzählige snaps löschen)
-            self.cleansnaps()
+            cmdfrom = 'zfs send -vce '+self.src.fs+'@'+SNAPPREFIX+'_'+str(self.src.lastsnap) 
+            cmdto = sshcmd+'zfs receive -vs '+self.dst.fs
+            ret = subrunPIPE(cmdfrom,cmdto)
+            
             pass
+        elif self.dst.lastsnap == self.src.lastsnap:
+            # bei sind auf gleichem Stand - also neuer Snap + send
+            self.src.takenextsnap()
+            cmdfrom = 'zfs send -vce -i '+self.src.fs+'@'+SNAPPREFIX+'_'+str(prev)+' '+self.src.fs+'@'+SNAPPREFIX+'_'+str(self.src.lastsnap)
+            cmdto =  sshcmd+'zfs receive -vs '+self.dst.fs
+            ret = subrunPIPE(cmdfrom,cmdto)
+            #print(ret.stdout)
+        elif self.src.lastsnap > 0:
+            '''
+            Okay, es gibt in src und dest snapshots von uns -
+            vlt. gibt es ja ein resume_token -> schau mer mal
+            '''
+            cmd = sshcmd +' zfs get -H receive_resume_token '+self.dst.fs
+            ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True)
+            print(ret.stdout)
+            ergeb = ret.stdout.split('\t')
+            if len(ergeb[2]) > 1:
+                # dann gibt es ein token mit dem wir den restart versuchen können
+                cmdfrom = 'zfs send -vt '+ergeb[2]
+                cmdto = sshcmd+' zfs receive -vs '+self.dst.fs
+                ret = subrunPIPE(cmdfrom, cmdto)
+                pass
+            
+        # Schlussbehandlung (überzählige snaps löschen)
+        self.cleansnaps()
         
     def cleansnaps(self):
         '''
@@ -139,5 +185,18 @@ class zfs_back(object):
             for i in self.src.snaplist[0:l1-HOLDSNAPS]:
                 self.src.deletesnap(i)
 if __name__ == '__main__':
-    zfs = zfs_back('vs3/home','vs3/back')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f","--from",dest='fromfs',
+                      help='Übergabe des ZFS-Filesystems welches gesichert werden soll')
+    parser.add_argument("-t","--to",dest='tofs',required=True,
+                      help='Übergabe des ZFS-Filesystems auf welches gesichert werden soll')
+    parser.add_argument("-s","--sshdest",dest='sshdest',
+                      help='Übergabe des per ssh zu erreichenden Destination-Rechners')
+    parser.add_argument("-c","--clearsnapsonly",dest='clearsnapsonly',action='store_true',
+                      help='Löscht nur die überzähligen Snaps des Zielfilesystems')
+    parser.set_defaults(clearsnapsonly=False)
+    ns = parser.parse_args(sys.argv[1:])
+    if ns.clearsnapsonly:
+        
+    zfs = zfs_back('vs2016/archiv/postgresql','zfsb/vsb','vsuess@192.168.1.61')
         
