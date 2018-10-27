@@ -118,7 +118,7 @@ class zfs_fs(object):
 
     def get_lastsnap(self):
         if len(self.snaplist) == 0:
-            return None
+            return ''
         return self.snaplist[-1]
         
 
@@ -174,12 +174,22 @@ class zfs_back(object):
         print('Lastsnap Source: '+self.src.lastsnap)
         print('Lastsnap Destination: '+self.dst.lastsnap)
         
-        if self.dst.lastsnap == None:
-            # dann voll senden (erst neuen Snapshot src erstellen
-            self.src.takenextsnap()
-            cmdfrom = 'zfs send -vce '+self.src.fs+'@'+SNAPPREFIX+'_'+self.src.lastsnap 
-            cmdto = sshcmd+'zfs receive -vsF '+self.dst.fs
-            ret = subrunPIPE(cmdfrom,cmdto)
+        if self.dst.lastsnap == '':
+            # dann voll senden (erst neuen Snapshot src erstellen) zuvor aber noch token checken
+            cmd = sshcmd +' zfs get -H receive_resume_token '+self.dst.fs
+            ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True)
+            print(ret.stdout)
+            ergeb = ret.stdout.split('\t')
+            if len(ergeb[2]) > 1:
+                # dann gibt es ein token mit dem wir den restart versuchen können
+                cmdfrom = 'zfs send -vt '+ergeb[2]
+                cmdto = sshcmd+' zfs receive -vs '+self.dst.fs
+                ret = subrunPIPE(cmdfrom, cmdto)
+            else:
+                self.src.takenextsnap()
+                cmdfrom = 'zfs send -vce '+self.src.fs+'@'+SNAPPREFIX+'_'+self.src.lastsnap 
+                cmdto = sshcmd+'zfs receive -vsF '+self.dst.fs
+                ret = subrunPIPE(cmdfrom,cmdto)
             
             pass
         elif self.dst.lastsnap == self.src.lastsnap:
@@ -191,7 +201,7 @@ class zfs_back(object):
             cmdto =  sshcmd+'zfs receive -Fvs '+self.dst.fs
             ret = subrunPIPE(cmdfrom,cmdto)
             #print(ret.stdout)
-        elif self.src.lastsnap != None:
+        elif self.src.lastsnap != '':
             '''
             Okay, es gibt in src und dest snapshots von uns -
             vlt. gibt es ja ein resume_token -> schau mer mal
