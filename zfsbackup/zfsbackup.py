@@ -77,18 +77,26 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
     #if checkretcode: ret.check_returncode()
     argsto = shlex.split(cmdto)
     print(zeit(),'pipe to -> ',' '.join(argsto))
-    ps = subprocess.Popen(args, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    ps = subprocess.Popen(args, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
     argsto = shlex.split(cmdto)
-    output = subprocess.check_output(argsto, stdin=ps.stdout)
-    ps.wait()
-    stdout,stderr = ps.communicate()
-    stdr = stderr.decode('utf-8')
-    for i in stdr.split('\n'):
-        print(i)
-    #print(ps.stderr)
-    out = output.decode("utf-8") 
-    for i in out.split('\n'):
-        print(i)
+    ziel = subprocess.Popen(argsto, stdin=ps.stdout,)
+    vgl = ''
+    cnt = 0
+    for line in ps.stderr:
+        cnt += 1
+        test = line.split(' ')
+        if test[-1] == vgl:
+            if cnt > 30:
+                cnt = 0
+                print(line,end='')
+        else:
+            vgl = test[-1]
+            print(line,end='')
+    if ps.returncode != 0:
+        raise CalledProcessError(ps.returncode, ps.args)
+    ziel.wait()
+    if ziel.returncode != 0:
+        raise CalledProcessError(ziel.returncode, ziel.args)
     #return ret
     
 def cleansnaps(fs):
@@ -180,7 +188,11 @@ class zfs_back(object):
             ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True,checkretcode=False)
             print(ret.stdout)
             ergeb = ret.stdout.split('\t')
-            if len(ergeb[2]) > 1:
+            try:
+                a = len(ergeb[2])
+            except:
+                a = 0
+            if a > 1:
                 # dann gibt es ein token mit dem wir den restart versuchen können
                 cmdfrom = 'zfs send -vt '+ergeb[2]
                 cmdto = sshcmd+' zfs receive -vs '+self.dst.fs
