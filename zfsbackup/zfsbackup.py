@@ -194,7 +194,7 @@ class zfs_back(object):
                 a = 0
             if a > 1:
                 # dann gibt es ein token mit dem wir den restart versuchen können
-                cmdfrom = 'zfs send -vt '+ergeb[2]
+                cmdfrom = 'zfs send -cevt '+ergeb[2]
                 cmdto = sshcmd+' zfs receive -vs '+self.dst.fs
                 ret = subrunPIPE(cmdfrom, cmdto)
             else:
@@ -224,7 +224,7 @@ class zfs_back(object):
             ergeb = ret.stdout.split('\t')
             if len(ergeb[2]) > 1:
                 # dann gibt es ein token mit dem wir den restart versuchen können
-                cmdfrom = 'zfs send -vt '+ergeb[2]
+                cmdfrom = 'zfs send -cevt '+ergeb[2]
                 cmdto = sshcmd+' zfs receive -vs '+self.dst.fs
                 ret = subrunPIPE(cmdfrom, cmdto)
             else:
