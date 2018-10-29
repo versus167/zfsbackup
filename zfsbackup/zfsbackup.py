@@ -81,9 +81,9 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
     #if checkretcode: ret.check_returncode()
     argsto = shlex.split(cmdto)
     print(zeit(),'pipe to -> ',' '.join(argsto))
-    ps = subprocess.Popen(args, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+    ps = subprocess.Popen(args, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True,check=True)
     argsto = shlex.split(cmdto)
-    ziel = subprocess.Popen(argsto, stdin=ps.stdout,)
+    ziel = subprocess.Popen(argsto, stdin=ps.stdout,check=True)
     vgl = ''
     cnt = 0
     for line in ps.stderr:
@@ -96,11 +96,7 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
         else:
             vgl = test[-1]
             print(line,end='')
-    if ps.returncode != 0:
-        raise subprocess.CalledProcessError(ps.returncode, ps.args)
-    ziel.wait()
-    if ziel.returncode != 0:
-        raise subprocess.CalledProcessError(ziel.returncode, ziel.args)
+    
     #return ret
     
 # def cleansnaps(fs):
@@ -215,7 +211,7 @@ class zfs_back(object):
             frs2 = self.src.fs+'@'+SNAPPREFIX+'_'+self.src.lastsnap
             cmdfrom = 'zfs send -vce -i '+frs1+' '+frs2
             cmdto =  sshcmd+'zfs receive -Fvs '+self.dst.fs
-            ret = subrunPIPE(cmdfrom,cmdto)
+            subrunPIPE(cmdfrom,cmdto)
             #print(ret.stdout)
         elif self.src.lastsnap != '':
             '''
@@ -230,7 +226,7 @@ class zfs_back(object):
                 # dann gibt es ein token mit dem wir den restart versuchen können
                 cmdfrom = 'zfs send -cevt '+ergeb[2]
                 cmdto = sshcmd+' zfs receive -vs '+self.dst.fs
-                ret = subrunPIPE(cmdfrom, cmdto)
+                subrunPIPE(cmdfrom, cmdto)
             else:
                 # Es gibt also kein Resumetoken - dann der Versuch mit -F
                 # Aber erst muss gecheckt werden, welcher snap auf dem dest-system vorhanden ist
@@ -245,7 +241,7 @@ class zfs_back(object):
                 frs2 = self.src.fs+'@'+SNAPPREFIX+'_'+self.src.lastsnap
                 cmdfrom = 'zfs send -vce -i '+frs1+' '+frs2
                 cmdto =  sshcmd+'zfs receive -Fvs '+self.dst.fs
-                ret = subrunPIPE(cmdfrom,cmdto)
+                subrunPIPE(cmdfrom,cmdto)
             
         # Schlussbehandlung (überzählige snaps löschen)
         # cleansnaps(self.src) - das löschen überlassen wir komplett zfsnappy 
