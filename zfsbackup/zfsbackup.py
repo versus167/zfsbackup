@@ -28,6 +28,7 @@ Cmnd_Alias C_ZFS = \
   /sbin/zfs "", /sbin/zfs help *, \
   /sbin/zfs get, /sbin/zfs get *, \
   /sbin/zfs list, /sbin/zfs list *, \
+  /sbin/zfs receive, /sbin/zfs receive *, \
   /sbin/zpool "", /sbin/zpool help *, \
   /sbin/zpool iostat, /sbin/zpool iostat *, \
   /sbin/zpool list, /sbin/zpool list *, \
@@ -44,7 +45,7 @@ Gleichzeitig sollte auf Source und Dest-System zfsnappy im Einsatz sein, da sons
 
 
 APPNAME='zfsbackup'
-VERSION='1 - 2018-06-28'
+VERSION='2 - 2018-10-29'
 SNAPPREFIX = 'zfsnappy'
 HOLDSNAPS = 5 # 5 Backupsnapshots werden behalten
 
