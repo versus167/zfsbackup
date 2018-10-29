@@ -93,10 +93,10 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
             vgl = test[-1]
             print(line,end='')
     if ps.returncode != 0:
-        raise CalledProcessError(ps.returncode, ps.args)
+        raise subprocess.CalledProcessError(ps.returncode, ps.args)
     ziel.wait()
     if ziel.returncode != 0:
-        raise CalledProcessError(ziel.returncode, ziel.args)
+        raise subprocess.CalledProcessError(ziel.returncode, ziel.args)
     #return ret
     
 def cleansnaps(fs):
