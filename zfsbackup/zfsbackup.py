@@ -39,7 +39,10 @@ Cmnd_Alias C_ZFS = \
 ALL ALL = (root) NOPASSWD: C_ZFS
 zfs (END)
 
-Gleichzeitig sollte auf Source und Dest-System zfsnappy im Einsatz sein, da sonst keine Snapshots gelöscht werden   
+Gleichzeitig sollte auf Source und Dest-System zfsnappy im Einsatz sein, da sonst keine Snapshots gelöscht werden
+
+Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelöscht werden
+-> wenn kein Token vorhanden ist, oder die Verwendung nicht klappt -> alle Holds freigeben   
 
 '''
 
@@ -47,10 +50,10 @@ Gleichzeitig sollte auf Source und Dest-System zfsnappy im Einsatz sein, da sons
 APPNAME='zfsbackup'
 VERSION='2 - 2018-10-29'
 SNAPPREFIX = 'zfsnappy'
-HOLDSNAPS = 5 # 5 Backupsnapshots werden behalten
+
 
 import subprocess,shlex, argparse
-import time,os.path,sys, datetime
+import time,sys, datetime
 
 def zeit():
     return time.strftime("%Y-%m-%d %H:%M:%S")
@@ -100,17 +103,17 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
         raise subprocess.CalledProcessError(ziel.returncode, ziel.args)
     #return ret
     
-def cleansnaps(fs):
-    '''
-    Soll vom fs alle Snapshots löschen - bis auf die neuesten
-    
-    
-    '''
-    l1 = len(fs.snaplist)
-    if l1 > HOLDSNAPS:
-        # dann paar löschen
-        for i in fs.snaplist[0:l1-HOLDSNAPS]:
-            fs.deletesnap(i)
+# def cleansnaps(fs):
+#     '''
+#     Soll vom fs alle Snapshots löschen - bis auf die neuesten
+#     
+#     
+#     '''
+#     l1 = len(fs.snaplist)
+#     if l1 > HOLDSNAPS:
+#         # dann paar löschen
+#         for i in fs.snaplist[0:l1-HOLDSNAPS]:
+#             fs.deletesnap(i)
 
 class zfs_fs(object):
     '''
