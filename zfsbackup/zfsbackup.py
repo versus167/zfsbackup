@@ -81,9 +81,9 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
     #if checkretcode: ret.check_returncode()
     argsto = shlex.split(cmdto)
     print(zeit(),'pipe to -> ',' '.join(argsto))
-    ps = subprocess.Popen(args, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True,check=True)
+    ps = subprocess.Popen(args, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
     argsto = shlex.split(cmdto)
-    ziel = subprocess.Popen(argsto, stdin=ps.stdout,check=True)
+    ziel = subprocess.Popen(argsto, stdin=ps.stdout)
     vgl = ''
     cnt = 0
     for line in ps.stderr:
