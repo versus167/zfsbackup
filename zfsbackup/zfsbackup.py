@@ -121,9 +121,23 @@ class zfs_fs(object):
         '''
         self.fs = fs
         self.connection = connection
-        self.__getsnaplist()
+        self.__getsnaplist() # Snaplist ohne Prefix sammeln
         pass
-
+    
+    def get_token(self):
+        ''' Schaut ob ein Token im Filesystem gespeichert ist '''
+        cmd = self.connection +' zfs get -H receive_resume_token '+self.fs
+        ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True,checkretcode=True)
+        #print(ret.stdout)
+        ergeb = ret.stdout.split('\t')
+        try:
+            a = len(ergeb[2])
+        except:
+            a = 0
+        if a > 1:
+            return ergeb[2]
+        else:
+            return None
     def get_lastsnap(self):
         if len(self.snaplist) == 0:
             return ''
@@ -131,8 +145,9 @@ class zfs_fs(object):
         
 
     def __getsnaplist(self):
+        # Snaplist ohne Prefix
         self.snaplist = []
-        ret = subrun(self.connection+' zfs list -H -t snapshot -o name',quiet=True,stdout=subprocess.PIPE,universal_newlines=True)
+        ret = subrun(self.connection+' zfs list -H -d 1 -t snapshot -o name '+self.fs,quiet=True,stdout=subprocess.PIPE,universal_newlines=True)
         ret.check_returncode()
         if ret.stdout == None:
             return
@@ -145,30 +160,63 @@ class zfs_fs(object):
         if len(self.snaplist) == 0:
             return
         self.snaplist.sort()
+        return
+    def get_holdnsaps(self):
+        '''
+        Gibt eine Liste mit Holdsnaps zurück
         
+        zfs list -H -d 1 -t snapshot -o name vs2016/archiv/virtualbox | xargs zfs holds 
+        '''
+        cmdfrom = shlex.split(self.connection+ ' zfs list -H -d 1 -t snapshot -o name '+self.fs)
+        cmdto = shlex.split(self.connection+' xargs zfs holds -H')
+        holdsnaps = []
+        pfrom = subprocess.Popen(cmdfrom, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+        pto =   subprocess.Popen(cmdto  , stdin=pfrom.stdout,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True,encoding='UTF-8')
+        
+        for line in pto.stdout:
+            holdsnaps.append(line.split('\t')[0])
+        return holdsnaps
+    
+    def hold_snap(self,snapshotname):
+        ''' Setzt den übergeben Snapshot auf Hold  - kompletter Name wird übergeben'''
+        cmd = self.connection+' zfs hold keep '+snapshotname
+        subrun(cmd)
+    
+    def clear_holdsnaps(self,listholdsnaps):
+        ''' Löscht die HOLD-Flags außer der übergebenen Snaps'''
+        
+        for i in self.get_holdnsaps():
+            if i in listholdsnaps:
+                pass
+            else:
+                cmd = self.connection+' zfs release -r keep '+i
+                subrun(cmd)
     def takenextsnap(self):
+        ''' 
+        Hier wird ein neuer Snap gesetzt - Wenn erfolgreich, dann alle übrigen Holds löschen und den neuen auf 
+        Hold setzen
+        '''
         aktuell = datetime.datetime.now()
         snapname = self.fs+'@'+SNAPPREFIX+'_'+aktuell.isoformat()
         ret = subrun(self.connection+' zfs snapshot '+snapname)
         ret.check_returncode()
         self.snaplist.append(aktuell.isoformat())
-        pass
+        return snapname
+        
     def get_oldsnap(self):
         return self.snaplist[-2]
         pass
-#     def deletesnap(self,nr):
-#         cmd = self.connection+' zfs destroy '+self.fs+'@'+SNAPPREFIX+'_'+str(nr)
-#         subrun(cmd)
-#         self.snaplist.remove(nr)
+
     getoldsnap = property(get_oldsnap, None, None, None)
     lastsnap = property(get_lastsnap, None, None, None)
+    
+    
     
 
 class zfs_back(object):
     '''
     Hier findet als der reine Backupablauf seinen Platz
     '''
-
     def __init__(self, srcfs,dstfs,destserver=None):
         '''
         src und dst anlegen 
@@ -182,69 +230,49 @@ class zfs_back(object):
         print('Lastsnap Source: '+self.src.lastsnap)
         print('Lastsnap Destination: '+self.dst.lastsnap)
         
-        if self.dst.lastsnap == '':
-            # dann voll senden (erst neuen Snapshot src erstellen) zuvor aber noch token checken
-            cmd = sshcmd +' zfs get -H receive_resume_token '+self.dst.fs
-            ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True,checkretcode=False)
-            print(ret.stdout)
-            ergeb = ret.stdout.split('\t')
-            try:
-                a = len(ergeb[2])
-            except:
-                a = 0
-            if a > 1:
-                # dann gibt es ein token mit dem wir den restart versuchen können
-                cmdfrom = 'zfs send -cevt '+ergeb[2]
-                cmdto = sshcmd+' zfs receive -vs '+self.dst.fs
-                ret = subrunPIPE(cmdfrom, cmdto)
-            else:
-                self.src.takenextsnap()
-                cmdfrom = 'zfs send -vce '+self.src.fs+'@'+SNAPPREFIX+'_'+self.src.lastsnap 
-                cmdto = sshcmd+'zfs receive -vsF '+self.dst.fs
-                ret = subrunPIPE(cmdfrom,cmdto)
-            
-            pass
-        elif self.dst.lastsnap == self.src.lastsnap:
-            # bei sind auf gleichem Stand - also neuer Snap + send
-            self.src.takenextsnap()
-            frs1 = self.src.fs+'@'+SNAPPREFIX+'_'+self.src.getoldsnap
-            frs2 = self.src.fs+'@'+SNAPPREFIX+'_'+self.src.lastsnap
-            cmdfrom = 'zfs send -vce -i '+frs1+' '+frs2
+        # 1. Schritt -> Token checken - falls ja, dann Versuch fortsetzen
+        token = self.dst.get_token()
+        
+        if token != None:
+            self.resume_transport(token)
+            return
+        
+        # 2. Schritt -> Wie lautet der neueste identische Snapshot?
+        lastmatch = self.get_lastmatch()
+        if lastmatch == None:
+            # es gibt also keinen identischen Snapshot -> Damit Versuch neuen Snapshot zu senden und FS zu erstellen
+            newsnap = self.src.takenextsnap()
+            self.src.hold_snap(newsnap)
+            self.src.clear_holdsnaps((newsnap,))
+            cmdfrom = 'zfs send -vce '+newsnap
+            cmdto = sshcmd+'zfs receive -vsF '+self.dst.fs
+            subrunPIPE(cmdfrom,cmdto)
+            return
+        
+        else:
+            # es gibt also einen gemeinsamen Snapshot - neuen Snapshot erstellen und inkrementell senden
+            newsnap = self.src.takenextsnap()
+            oldsnap = self.src.fs+'@'+SNAPPREFIX+'_'+lastmatch
+            self.src.hold_snap(newsnap)
+            self.src.clear_holdsnaps((oldsnap,newsnap))
+            cmdfrom = 'zfs send -vce -i '+oldsnap+' '+newsnap
             cmdto =  sshcmd+'zfs receive -Fvs '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
-            #print(ret.stdout)
-        elif self.src.lastsnap != '':
-            '''
-            Okay, es gibt in src und dest snapshots von uns -
-            vlt. gibt es ja ein resume_token -> schau mer mal
-            '''
-            cmd = sshcmd +' zfs get -H receive_resume_token '+self.dst.fs
-            ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True)
-            print(ret.stdout)
-            ergeb = ret.stdout.split('\t')
-            if len(ergeb[2]) > 1:
-                # dann gibt es ein token mit dem wir den restart versuchen können
-                cmdfrom = 'zfs send -cevt '+ergeb[2]
-                cmdto = sshcmd+' zfs receive -vs '+self.dst.fs
-                subrunPIPE(cmdfrom, cmdto)
-            else:
-                # Es gibt also kein Resumetoken - dann der Versuch mit -F
-                # Aber erst muss gecheckt werden, welcher snap auf dem dest-system vorhanden ist
-                lastmatch = None
-                for i in self.src.snaplist:
-                    if i in self.dst.snaplist:
-                        lastmatch = i
-                if lastmatch == None:
-                    print('Kein identischer Snap vorhanden - Damit muss das Zielsystem erst von allen Snaps befreit oder gelöscht werden!')
-                    return
-                frs1 = self.src.fs+'@'+SNAPPREFIX+'_'+lastmatch
-                frs2 = self.src.fs+'@'+SNAPPREFIX+'_'+self.src.lastsnap
-                cmdfrom = 'zfs send -vce -i '+frs1+' '+frs2
-                cmdto =  sshcmd+'zfs receive -Fvs '+self.dst.fs
-                subrunPIPE(cmdfrom,cmdto)
-            
-        # Schlussbehandlung (überzählige snaps löschen)
-        # cleansnaps(self.src) - das löschen überlassen wir komplett zfsnappy 
+            return
+
+        
+    def get_lastmatch(self):
+        ''' Sucht den letzten identischen Snapshot '''
+        lastmatch = None
+        for i in self.src.snaplist:
+            if i in self.dst.snaplist:
+                lastmatch = i
+        return lastmatch
+    def resume_transport(self,token):
+        # Setzt den Transport fort 
+        cmdfrom = 'zfs send -cevt '+token
+        cmdto = self.dst.connection+' zfs receive -vs '+self.dst.fs
+        subrunPIPE(cmdfrom, cmdto)
         
    
 if __name__ == '__main__':
@@ -257,7 +285,7 @@ if __name__ == '__main__':
                       help='Übergabe des per ssh zu erreichenden Destination-Rechners')
 #     parser.add_argument("-c","--clearsnapsonly",dest='clearsnapsonly',action='store_true',
 #                       help='Löscht nur die überzähligen Snaps des Zielfilesystems')
-    parser.set_defaults(clearsnapsonly=False)
+#    parser.set_defaults(clearsnapsonly=False)
     ns = parser.parse_args(sys.argv[1:])
     zfs = zfs_back(ns.fromfs,ns.tofs,ns.sshdest)
         
