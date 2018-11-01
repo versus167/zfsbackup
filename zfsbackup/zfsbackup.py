@@ -243,10 +243,11 @@ class zfs_back(object):
             # es gibt also keinen identischen Snapshot -> Damit Versuch neuen Snapshot zu senden und FS zu erstellen
             newsnap = self.src.takenextsnap()
             self.src.hold_snap(newsnap)
-            self.src.clear_holdsnaps((newsnap,))
+            
             cmdfrom = 'zfs send -vce '+newsnap
             cmdto = sshcmd+'zfs receive -vsF '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
+            self.src.clear_holdsnaps((newsnap,))
             return
         
         else:
@@ -254,10 +255,11 @@ class zfs_back(object):
             newsnap = self.src.takenextsnap()
             oldsnap = self.src.fs+'@'+SNAPPREFIX+'_'+lastmatch
             self.src.hold_snap(newsnap)
-            self.src.clear_holdsnaps((oldsnap,newsnap))
+            
             cmdfrom = 'zfs send -vce -i '+oldsnap+' '+newsnap
             cmdto =  sshcmd+'zfs receive -Fvs '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
+            self.src.clear_holdsnaps((oldsnap,newsnap))
             return
 
         
@@ -283,9 +285,6 @@ if __name__ == '__main__':
                       help='Übergabe des ZFS-Filesystems auf welches gesichert werden soll')
     parser.add_argument("-s","--sshdest",dest='sshdest',
                       help='Übergabe des per ssh zu erreichenden Destination-Rechners')
-#     parser.add_argument("-c","--clearsnapsonly",dest='clearsnapsonly',action='store_true',
-#                       help='Löscht nur die überzähligen Snaps des Zielfilesystems')
-#    parser.set_defaults(clearsnapsonly=False)
     ns = parser.parse_args(sys.argv[1:])
     zfs = zfs_back(ns.fromfs,ns.tofs,ns.sshdest)
         
