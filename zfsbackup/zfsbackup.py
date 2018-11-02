@@ -5,6 +5,8 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
+2018-11-02 - Soweit sollte alles drin sein und einsatzfähig. Jetzt Praxistest - vs.
+
 Sieht aus als wäre das alles gar kein echtes Problem -> Ist es auch nicht.
 
 Das Problem liegt an einer anderen Stelle: zfs send/receive funzt nur als root. Damit fällt die 
@@ -48,7 +50,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2 - 2018-10-29'
+VERSION='3 - 2018-11-02'
 SNAPPREFIX = 'zfsnappy'
 
 
@@ -284,6 +286,8 @@ if __name__ == '__main__':
     parser.add_argument("-s","--sshdest",dest='sshdest',
                       help='Übergabe des per ssh zu erreichenden Destination-Rechners')
     ns = parser.parse_args(sys.argv[1:])
+    print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Start')
+    print(time.strftime("%Y-%m-%d %H:%M:%S"),'Aufrufparameter:',' '.join(sys.argv[1:]))
     if imrunning(ns.fromfs):
         exit()
     zfs = zfs_back(ns.fromfs,ns.tofs,ns.sshdest)
