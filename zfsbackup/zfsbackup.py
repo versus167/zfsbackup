@@ -96,20 +96,18 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
         else:
             vgl = test[-1]
             print(line,end='')
+            
+def imrunning(fs):
     
-    #return ret
-    
-# def cleansnaps(fs):
-#     '''
-#     Soll vom fs alle Snapshots löschen - bis auf die neuesten
-#     
-#     
-#     '''
-#     l1 = len(fs.snaplist)
-#     if l1 > HOLDSNAPS:
-#         # dann paar löschen
-#         for i in fs.snaplist[0:l1-HOLDSNAPS]:
-#             fs.deletesnap(i)
+    psfaxu = subrun('ps fax',stdout=subprocess.PIPE,universal_newlines=True)
+    pids = []
+    for i in psfaxu.stdout.split('\n'):
+        #print(i)
+        if '/usr/bin/python3' in i and 'zfsbackup.py' in i and fs in i:
+            pids.append(i.strip(' ').split(' ')[0])
+    if len(pids) > 1:
+        print(time.strftime("%Y-%m-%d %H:%M:%S"),'Looft bereits! pids: ',pids)
+        return True
 
 class zfs_fs(object):
     '''
@@ -271,7 +269,7 @@ class zfs_back(object):
     def resume_transport(self,token):
         # Setzt den Transport fort 
         cmdfrom = 'zfs send -cevt '+token
-        cmdto = self.dst.connection+' zfs receive -vs '+self.dst.fs
+        cmdto = self.dst.connection+' zfs receive -Fvs '+self.dst.fs
         subrunPIPE(cmdfrom, cmdto)
         
    
@@ -283,9 +281,8 @@ if __name__ == '__main__':
                       help='Übergabe des ZFS-Filesystems auf welches gesichert werden soll')
     parser.add_argument("-s","--sshdest",dest='sshdest',
                       help='Übergabe des per ssh zu erreichenden Destination-Rechners')
-#     parser.add_argument("-c","--clearsnapsonly",dest='clearsnapsonly',action='store_true',
-#                       help='Löscht nur die überzähligen Snaps des Zielfilesystems')
-#    parser.set_defaults(clearsnapsonly=False)
     ns = parser.parse_args(sys.argv[1:])
+    if imrunning(ns.fromfs):
+        exit()
     zfs = zfs_back(ns.fromfs,ns.tofs,ns.sshdest)
         
