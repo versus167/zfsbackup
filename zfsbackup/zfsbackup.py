@@ -241,10 +241,11 @@ class zfs_back(object):
             # es gibt also keinen identischen Snapshot -> Damit Versuch neuen Snapshot zu senden und FS zu erstellen
             newsnap = self.src.takenextsnap()
             self.src.hold_snap(newsnap)
-            self.src.clear_holdsnaps((newsnap,))
+            
             cmdfrom = 'zfs send -vce '+newsnap
             cmdto = sshcmd+'zfs receive -vsF '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
+            self.src.clear_holdsnaps((newsnap,))
             return
         
         else:
@@ -252,10 +253,11 @@ class zfs_back(object):
             newsnap = self.src.takenextsnap()
             oldsnap = self.src.fs+'@'+SNAPPREFIX+'_'+lastmatch
             self.src.hold_snap(newsnap)
-            self.src.clear_holdsnaps((oldsnap,newsnap))
+            
             cmdfrom = 'zfs send -vce -i '+oldsnap+' '+newsnap
             cmdto =  sshcmd+'zfs receive -Fvs '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
+            self.src.clear_holdsnaps((oldsnap,newsnap))
             return
 
         
