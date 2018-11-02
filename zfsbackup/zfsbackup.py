@@ -289,6 +289,8 @@ if __name__ == '__main__':
     print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Start')
     print(time.strftime("%Y-%m-%d %H:%M:%S"),'Aufrufparameter:',' '.join(sys.argv[1:]))
     if imrunning(ns.fromfs):
+        print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
         exit()
     zfs = zfs_back(ns.fromfs,ns.tofs,ns.sshdest)
+    print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
         
