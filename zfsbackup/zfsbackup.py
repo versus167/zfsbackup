@@ -5,6 +5,8 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
+todo -> mit Prefix arbeiten um zfsbackup für verschiedene Zielsysteme möglich zu machen
+
 3 - 2018-11-02 - Soweit sollte alles drin sein und einsatzfähig. Jetzt Praxistest - vs.
 
 Sieht aus als wäre das alles gar kein echtes Problem -> Ist es auch nicht.
