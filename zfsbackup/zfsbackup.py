@@ -5,6 +5,7 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
+2019-02-21 - Option prefix ergänzt - vs.
 2018-11-02 - Soweit sollte alles drin sein und einsatzfähig. Jetzt Praxistest - vs.
 
 Sieht aus als wäre das alles gar kein echtes Problem -> Ist es auch nicht.
@@ -50,7 +51,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='3 - 2018-11-02'
+VERSION='4 - 2019-02-21'
 #SNAPPREFIX = 'zfsnappy'
 
 
