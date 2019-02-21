@@ -119,7 +119,7 @@ class zfs_fs(object):
         '''
         Welches FS und worüber erreichen wir das
         '''
-        sef.PREFIX = prefix
+        self.PREFIX = prefix
         self.fs = fs
         self.connection = connection
         self.__getsnaplist() # Snaplist ohne Prefix sammeln
@@ -202,7 +202,7 @@ class zfs_fs(object):
         Hold setzen
         '''
         aktuell = datetime.datetime.now()
-        snapname = self.fs+'@'+SNAPPREFIX+'_'+aktuell.isoformat()
+        snapname = self.fs+'@'+self.PREFIX+'_'+aktuell.isoformat()
         ret = subrun(self.connection+' zfs snapshot '+snapname)
         ret.check_returncode()
         self.snaplist.append(aktuell.isoformat())
@@ -231,8 +231,8 @@ class zfs_back(object):
             sshcmd = 'ssh -T '+destserver+' sudo '
         else:
             sshcmd = ''
-        self.src = zfs_fs(srcfs)
-        self.dst = zfs_fs(dstfs,sshcmd)
+        self.src = zfs_fs(srcfs,self.PREFIX)
+        self.dst = zfs_fs(dstfs,self.PREFIX,sshcmd)
         print('Lastsnap Source: '+self.src.lastsnap)
         print('Lastsnap Destination: '+self.dst.lastsnap)
         
@@ -298,6 +298,6 @@ if __name__ == '__main__':
     if imrunning(ns.fromfs):
         print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
         exit()
-    zfs = zfs_back(ns.fromfs,ns.tofs,ns.prefix,ns.sshdes)
+    zfs = zfs_back(ns.fromfs,ns.tofs,ns.prefix,ns.sshdest)
     print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
         
