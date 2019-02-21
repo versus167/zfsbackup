@@ -51,7 +51,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 APPNAME='zfsbackup'
 VERSION='3 - 2018-11-02'
-SNAPPREFIX = 'zfsnappy'
+#SNAPPREFIX = 'zfsnappy'
 
 
 import subprocess,shlex, argparse
@@ -115,10 +115,11 @@ class zfs_fs(object):
     '''
     Alles rund um das Filesystem direkt
     '''
-    def __init__(self,fs,connection = ''):
+    def __init__(self,fs,prefix,connection = ''):
         '''
         Welches FS und worüber erreichen wir das
         '''
+        sef.PREFIX = prefix
         self.fs = fs
         self.connection = connection
         self.__getsnaplist() # Snaplist ohne Prefix sammeln
@@ -151,7 +152,8 @@ class zfs_fs(object):
         ret.check_returncode()
         if ret.stdout == None:
             return
-        vgl = self.fs+'@'+SNAPPREFIX+'_'
+        # Noch die Snaps mit dem falschen Prefix rausnehmen
+        vgl = self.fs+'@'+self.PREFIX+'_'
         l = len(vgl)
         
         for snp in ret.stdout.split('\n'):
@@ -172,9 +174,12 @@ class zfs_fs(object):
         holdsnaps = []
         pfrom = subprocess.Popen(cmdfrom, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
         pto =   subprocess.Popen(cmdto  , stdin=pfrom.stdout,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True,encoding='UTF-8')
-        
+        vgl = self.fs+'@'+self.PREFIX+'_'
+        l1 = len(vgl)
         for line in pto.stdout:
-            holdsnaps.append(line.split('\t')[0])
+            snp = line.split('\t')[0]
+            if snp[0:l] == vgl:
+               holdsnaps.append(snp)
         return holdsnaps
     
     def hold_snap(self,snapshotname):
@@ -217,10 +222,11 @@ class zfs_back(object):
     '''
     Hier findet als der reine Backupablauf seinen Platz
     '''
-    def __init__(self, srcfs,dstfs,destserver=None):
+    def __init__(self, srcfs,dstfs,prefix,destserver=None):
         '''
         src und dst anlegen 
         '''
+        self.PREFIX = prefix
         if destserver != None:
             sshcmd = 'ssh -T '+destserver+' sudo '
         else:
@@ -253,7 +259,7 @@ class zfs_back(object):
         else:
             # es gibt also einen gemeinsamen Snapshot - neuen Snapshot erstellen und inkrementell senden
             newsnap = self.src.takenextsnap()
-            oldsnap = self.src.fs+'@'+SNAPPREFIX+'_'+lastmatch
+            oldsnap = self.src.fs+'@'+self.PREFIX+'_'+lastmatch
             self.src.hold_snap(newsnap)
             
             cmdfrom = 'zfs send -vce -i '+oldsnap+' '+newsnap
@@ -285,12 +291,13 @@ if __name__ == '__main__':
                       help='Übergabe des ZFS-Filesystems auf welches gesichert werden soll')
     parser.add_argument("-s","--sshdest",dest='sshdest',
                       help='Übergabe des per ssh zu erreichenden Destination-Rechners')
+    parser.add_argument('-p','--prefix',dest='prefix',help='Der Prefix für die Bezeichnungen der Snapshots',default='zfsnappy')
     ns = parser.parse_args(sys.argv[1:])
     print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Start')
     print(time.strftime("%Y-%m-%d %H:%M:%S"),'Aufrufparameter:',' '.join(sys.argv[1:]))
     if imrunning(ns.fromfs):
         print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
         exit()
-    zfs = zfs_back(ns.fromfs,ns.tofs,ns.sshdest)
+    zfs = zfs_back(ns.fromfs,ns.tofs,ns.prefix,ns.sshdes)
     print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
         
