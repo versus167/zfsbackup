@@ -176,7 +176,7 @@ class zfs_fs(object):
         pfrom = subprocess.Popen(cmdfrom, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
         pto =   subprocess.Popen(cmdto  , stdin=pfrom.stdout,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True,encoding='UTF-8')
         vgl = self.fs+'@'+self.PREFIX+'_'
-        l1 = len(vgl)
+        l = len(vgl)
         for line in pto.stdout:
             snp = line.split('\t')[0]
             if snp[0:l] == vgl:
