@@ -5,9 +5,11 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
-todo -> mit Prefix arbeiten um zfsbackup für verschiedene Zielsysteme möglich zu machen
 
-3 - 2018-11-02 - Soweit sollte alles drin sein und einsatzfähig. Jetzt Praxistest - vs.
+
+2019-02-21 - Option prefix ergänzt - vs.
+2018-11-02 - Soweit sollte alles drin sein und einsatzfähig. Jetzt Praxistest - vs.
+
 
 Sieht aus als wäre das alles gar kein echtes Problem -> Ist es auch nicht.
 
@@ -52,7 +54,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='3 - 2018-11-02'
+VERSION='4 - 2019-02-21'
 #SNAPPREFIX = 'zfsnappy'
 
 
@@ -121,7 +123,7 @@ class zfs_fs(object):
         '''
         Welches FS und worüber erreichen wir das
         '''
-        sef.PREFIX = prefix
+        self.PREFIX = prefix
         self.fs = fs
         self.connection = connection
         self.__getsnaplist() # Snaplist ohne Prefix sammeln
@@ -177,7 +179,7 @@ class zfs_fs(object):
         pfrom = subprocess.Popen(cmdfrom, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
         pto =   subprocess.Popen(cmdto  , stdin=pfrom.stdout,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True,encoding='UTF-8')
         vgl = self.fs+'@'+self.PREFIX+'_'
-        l1 = len(vgl)
+        l = len(vgl)
         for line in pto.stdout:
             snp = line.split('\t')[0]
             if snp[0:l] == vgl:
@@ -204,7 +206,7 @@ class zfs_fs(object):
         Hold setzen
         '''
         aktuell = datetime.datetime.now()
-        snapname = self.fs+'@'+SNAPPREFIX+'_'+aktuell.isoformat()
+        snapname = self.fs+'@'+self.PREFIX+'_'+aktuell.isoformat()
         ret = subrun(self.connection+' zfs snapshot '+snapname)
         ret.check_returncode()
         self.snaplist.append(aktuell.isoformat())
@@ -233,8 +235,8 @@ class zfs_back(object):
             sshcmd = 'ssh -T '+destserver+' sudo '
         else:
             sshcmd = ''
-        self.src = zfs_fs(srcfs)
-        self.dst = zfs_fs(dstfs,sshcmd)
+        self.src = zfs_fs(srcfs,self.PREFIX)
+        self.dst = zfs_fs(dstfs,self.PREFIX,sshcmd)
         print('Lastsnap Source: '+self.src.lastsnap)
         print('Lastsnap Destination: '+self.dst.lastsnap)
         
@@ -300,6 +302,6 @@ if __name__ == '__main__':
     if imrunning(ns.fromfs):
         print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
         exit()
-    zfs = zfs_back(ns.fromfs,ns.tofs,ns.prefix,ns.sshdes)
+    zfs = zfs_back(ns.fromfs,ns.tofs,ns.prefix,ns.sshdest)
     print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
         
