@@ -6,7 +6,7 @@ Created on 28.06.2018
 @author: Volker Süß
 
 
-
+2019-05-05 - Problem das dest-snaps nicht auf hold stehen!! - bisher nicht gelöst
 2019-02-21 - Option prefix ergänzt - vs.
 2018-11-02 - Soweit sollte alles drin sein und einsatzfähig. Jetzt Praxistest - vs.
 
@@ -257,6 +257,7 @@ class zfs_back(object):
             cmdfrom = 'zfs send -vce '+newsnap
             cmdto = sshcmd+'zfs receive -vsF '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
+            
             self.src.clear_holdsnaps((newsnap,))
             return
         
