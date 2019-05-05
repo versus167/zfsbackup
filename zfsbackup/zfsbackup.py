@@ -6,7 +6,7 @@ Created on 28.06.2018
 @author: Volker Süß
 
 
-2019-05-05 - Problem das dest-snaps nicht auf hold stehen!! - bisher nicht gelöst
+2019-05-05 - Hold-auch für Destination eingefügt! - vs.
 2019-02-21 - Option prefix ergänzt - vs.
 2018-11-02 - Soweit sollte alles drin sein und einsatzfähig. Jetzt Praxistest - vs.
 
@@ -35,6 +35,7 @@ Cmnd_Alias C_ZFS = \
   /sbin/zfs get, /sbin/zfs get *, \
   /sbin/zfs list, /sbin/zfs list *, \
   /sbin/zfs receive, /sbin/zfs receive *, \
+  /sbin/zfs hold, /sbin/zfs hold *, \
   /sbin/zpool "", /sbin/zpool help *, \
   /sbin/zpool iostat, /sbin/zpool iostat *, \
   /sbin/zpool list, /sbin/zpool list *, \
@@ -54,7 +55,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='4 - 2019-02-21'
+VERSION='5 - 2019-05-05'
 #SNAPPREFIX = 'zfsnappy'
 
 
@@ -146,7 +147,7 @@ class zfs_fs(object):
     def get_lastsnap(self):
         if len(self.snaplist) == 0:
             return ''
-        return self.snaplist[-1]
+        return self.fs+'@'+self.PREFIX+'_'+self.snaplist[-1]
         
 
     def updatesnaplist(self):
@@ -193,7 +194,7 @@ class zfs_fs(object):
     
     def clear_holdsnaps(self,listholdsnaps):
         ''' Löscht die HOLD-Flags außer der übergebenen Snaps'''
-        
+        #print(listholdsnaps)
         for i in self.get_holdnsaps():
             if i in listholdsnaps:
                 pass
