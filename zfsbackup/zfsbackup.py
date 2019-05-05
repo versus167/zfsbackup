@@ -126,7 +126,7 @@ class zfs_fs(object):
         self.PREFIX = prefix
         self.fs = fs
         self.connection = connection
-        self.__getsnaplist() # Snaplist ohne Prefix sammeln
+        self.updatesnaplist() # Snaplist ohne Prefix sammeln
         pass
     
     def get_token(self):
@@ -149,7 +149,7 @@ class zfs_fs(object):
         return self.snaplist[-1]
         
 
-    def __getsnaplist(self):
+    def updatesnaplist(self):
         # Snaplist ohne Prefix
         self.snaplist = []
         ret = subrun(self.connection+' zfs list -H -d 1 -t snapshot -o name '+self.fs,quiet=True,stdout=subprocess.PIPE,universal_newlines=True)
@@ -292,7 +292,7 @@ class zfs_back(object):
         subrunPIPE(cmdfrom, cmdto)
     def dst_hold_update(self):
         ''' setzt den letzten (aktuellsten) Snap auf Hold und released die anderen '''
-        self.dst.__getsnaplist() # neu aufbauen, da neuer Snap vorhanden
+        self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
         self.dst.hold_snap(self.dst.lastsnap)
         self.dst.clear_holdsnaps((self.dst.lastsnap,))
             
