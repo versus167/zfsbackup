@@ -168,7 +168,7 @@ class zfs_fs(object):
         if len(self.snaplist) == 0:
             return
         self.snaplist.sort()
-    
+        print(self.snaplist)
         return
     def get_holdsnaps(self):
         '''
@@ -323,6 +323,7 @@ class zfs_back(object):
     def dst_hold_update(self):
         ''' setzt den letzten (aktuellsten) Snap auf Hold und released die anderen '''
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
+        print('Dieser Snap im dst wird auf Hold gesetzt: ',self.dst.lastsnap)
         self.dst.hold_snap(self.dst.lastsnap)
         self.dst.clear_holdsnaps((self.dst.lastsnap,))
             
