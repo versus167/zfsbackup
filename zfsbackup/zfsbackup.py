@@ -36,6 +36,7 @@ Cmnd_Alias C_ZFS = \
   /sbin/zfs list, /sbin/zfs list *, \
   /sbin/zfs receive, /sbin/zfs receive *, \
   /sbin/zfs hold, /sbin/zfs hold *, \
+  /sbin/zfs release, /sbin/zfs release *, \
   /sbin/zpool "", /sbin/zpool help *, \
   /sbin/zpool iostat, /sbin/zpool iostat *, \
   /sbin/zpool list, /sbin/zpool list *, \
@@ -168,24 +169,51 @@ class zfs_fs(object):
             return
         self.snaplist.sort()
         return
-    def get_holdnsaps(self):
+    def get_holdsnaps(self):
         '''
-        Gibt eine Liste mit Holdsnaps zurück
+        Alternative zur Pipe-Variante
         
-        zfs list -H -d 1 -t snapshot -o name vs2016/archiv/virtualbox | xargs zfs holds 
-        '''
-        cmdfrom = shlex.split(self.connection+ ' zfs list -H -d 1 -t snapshot -o name '+self.fs)
-        cmdto = shlex.split(self.connection+' xargs zfs holds -H')
+        zfs list -H -d 1 -t snapshot -o userrefs,name vs2016/bk/vs -> Liefert zwei Spalten - Zahl name
+        if zahl > 0 dann ist es auf hold
+         '''
         holdsnaps = []
-        pfrom = subprocess.Popen(cmdfrom, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
-        pto =   subprocess.Popen(cmdto  , stdin=pfrom.stdout,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True,encoding='UTF-8')
+        cmd = self.connection+' zfs list -H -d 1 -t snapshot -o userrefs,name '+self.fs
+        ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True)
+        ret.check_returncode()
+        if ret.stdout == None:
+            return
+        # Noch die Snaps mit dem falschen Prefix rausnehmen
         vgl = self.fs+'@'+self.PREFIX+'_'
         l = len(vgl)
-        for line in pto.stdout:
-            snp = line.split('\t')[0]
-            if snp[0:l] == vgl:
-               holdsnaps.append(snp)
+        
+        for i in ret.stdout.split('\n'):
+            if len(i) == 0:
+                continue 
+            j = i.split('\t')
+            if int(j[0]) > 0:
+                if j[1][0:l] == vgl:
+                    holdsnaps.append(j[1])
         return holdsnaps
+        
+
+#     def get_holdnsaps(self):
+#         '''
+#         Gibt eine Liste mit Holdsnaps zurück
+#         
+#         zfs list -H -d 1 -t snapshot -o name vs2016/archiv/virtualbox | xargs zfs holds 
+#         '''
+#         cmdfrom = shlex.split(self.connection+ ' zfs list -H -d 1 -t snapshot -o name '+self.fs)
+#         cmdto = shlex.split(self.connection+' xargs zfs holds -H')
+#         holdsnaps = []
+#         pfrom = subprocess.Popen(cmdfrom, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+#         pto =   subprocess.Popen(cmdto  , stdin=pfrom.stdout,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True,encoding='UTF-8')
+#         vgl = self.fs+'@'+self.PREFIX+'_'
+#         l = len(vgl)
+#         for line in pto.stdout:
+#             snp = line.split('\t')[0]
+#             if snp[0:l] == vgl:
+#                holdsnaps.append(snp)
+#         return holdsnaps
     
     def hold_snap(self,snapshotname):
         ''' Setzt den übergeben Snapshot auf Hold  - kompletter Name wird übergeben'''
@@ -195,7 +223,7 @@ class zfs_fs(object):
     def clear_holdsnaps(self,listholdsnaps):
         ''' Löscht die HOLD-Flags außer der übergebenen Snaps'''
         #print(listholdsnaps)
-        for i in self.get_holdnsaps():
+        for i in self.get_holdsnaps():
             if i in listholdsnaps:
                 pass
             else:
