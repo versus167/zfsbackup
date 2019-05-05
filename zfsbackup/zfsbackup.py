@@ -245,6 +245,8 @@ class zfs_back(object):
         
         if token != None:
             self.resume_transport(token)
+            # Send sollte erfolgreich gewesen sein -> Neuesten snap am Ziel auf Hold setzen
+            self.dst_hold_update()
             return
         
         # 2. Schritt -> Wie lautet der neueste identische Snapshot?
@@ -259,6 +261,7 @@ class zfs_back(object):
             subrunPIPE(cmdfrom,cmdto)
             
             self.src.clear_holdsnaps((newsnap,))
+            self.dst_hold_update()
             return
         
         else:
@@ -271,6 +274,7 @@ class zfs_back(object):
             cmdto =  sshcmd+'zfs receive -Fvs '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
             self.src.clear_holdsnaps((oldsnap,newsnap))
+            self.dst_hold_update()
             return
 
         
@@ -286,7 +290,12 @@ class zfs_back(object):
         cmdfrom = 'zfs send -cevt '+token
         cmdto = self.dst.connection+' zfs receive -Fvs '+self.dst.fs
         subrunPIPE(cmdfrom, cmdto)
-        
+    def dst_hold_update(self):
+        ''' setzt den letzten (aktuellsten) Snap auf Hold und released die anderen '''
+        self.dst.__getsnaplist() # neu aufbauen, da neuer Snap vorhanden
+        self.dst.hold_snap(self.dst.lastsnap)
+        self.dst.clear_holdsnaps((self.dst.lastsnap,))
+            
    
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
