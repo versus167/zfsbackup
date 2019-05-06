@@ -168,7 +168,7 @@ class zfs_fs(object):
         if len(self.snaplist) == 0:
             return
         self.snaplist.sort()
-        print(self.fs,self.PREFIX)
+        print(zeit(),self.fs,self.PREFIX)
         print(self.snaplist[-2:])
         return
     def get_holdsnaps(self):
