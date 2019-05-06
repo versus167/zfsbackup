@@ -6,7 +6,7 @@ Created on 28.06.2018
 @author: Volker Süß
 
 
-2019-05-05 - Hold-auch für Destination eingefügt! - vs.
+2019-05-06 - Hold-auch für Destination eingefügt! - vs.
 2019-02-21 - Option prefix ergänzt - vs.
 2018-11-02 - Soweit sollte alles drin sein und einsatzfähig. Jetzt Praxistest - vs.
 
@@ -56,7 +56,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='5 - 2019-05-05'
+VERSION='5 - 2019-05-06'
 #SNAPPREFIX = 'zfsnappy'
 
 
@@ -168,8 +168,8 @@ class zfs_fs(object):
         if len(self.snaplist) == 0:
             return
         self.snaplist.sort()
-        print(zeit(),self.fs,self.PREFIX)
-        print(self.snaplist[-2:])
+        #print(zeit(),self.fs,self.PREFIX)
+        #print(self.snaplist[-2:])
         return
     def get_holdsnaps(self):
         '''
