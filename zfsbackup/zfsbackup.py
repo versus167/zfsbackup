@@ -154,7 +154,7 @@ class zfs_fs(object):
     def updatesnaplist(self):
         # Snaplist ohne Prefix
         self.snaplist = []
-        ret = subrun(self.connection+' zfs list -H -d 1 -t snapshot -o name '+self.fs,quiet=True,stdout=subprocess.PIPE,universal_newlines=True)
+        ret = subrun(self.connection+' zfs list -H -d 1 -t snapshot -o name '+self.fs,quiet=False,stdout=subprocess.PIPE,universal_newlines=True)
         ret.check_returncode()
         if ret.stdout == None:
             return
