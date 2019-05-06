@@ -323,6 +323,9 @@ class zfs_back(object):
         subrunPIPE(cmdfrom, cmdto)
     def dst_hold_update(self):
         ''' setzt den letzten (aktuellsten) Snap auf Hold und released die anderen '''
+        # Dann erstmal eine kurze Pause - vlt. hilft das ZFS Luft zu holen und
+        # alle Snaps aufzulisten
+        time.sleep(10)
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
         print('Dieser Snap im dst wird auf Hold gesetzt: ',self.dst.lastsnap)
         self.dst.hold_snap(self.dst.lastsnap)
