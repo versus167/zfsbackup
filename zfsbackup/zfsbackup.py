@@ -325,7 +325,7 @@ class zfs_back(object):
         ''' setzt den letzten (aktuellsten) Snap auf Hold und released die anderen '''
         # Dann erstmal eine kurze Pause - vlt. hilft das ZFS Luft zu holen und
         # alle Snaps aufzulisten
-        time.sleep(10)
+        time.sleep(30) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
         #print('Dieser Snap im dst wird auf Hold gesetzt: ',self.dst.lastsnap)
         self.dst.hold_snap(self.dst.lastsnap)
