@@ -327,7 +327,7 @@ class zfs_back(object):
         # alle Snaps aufzulisten
         time.sleep(10)
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
-        print('Dieser Snap im dst wird auf Hold gesetzt: ',self.dst.lastsnap)
+        #print('Dieser Snap im dst wird auf Hold gesetzt: ',self.dst.lastsnap)
         self.dst.hold_snap(self.dst.lastsnap)
         self.dst.clear_holdsnaps((self.dst.lastsnap,))
             
