@@ -288,7 +288,7 @@ class zfs_back(object):
             self.src.hold_snap(newsnap)
             
             cmdfrom = 'zfs send -wv '+newsnap
-            cmdto = sshcmd+'zfs receive -vsF '+self.dst.fs
+            cmdto = sshcmd+'zfs receive -vs '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
             
             self.src.clear_holdsnaps((newsnap,))
