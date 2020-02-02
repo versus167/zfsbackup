@@ -257,10 +257,24 @@ class zfs_back(object):
     '''
     Hier findet als der reine Backupablauf seinen Platz
     '''
-    def __init__(self, srcfs,dstfs,prefix,destserver=None):
+    def __init__(self,):
         '''
         src und dst anlegen 
         '''
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-f","--from",dest='fromfs',
+            help='Übergabe des ZFS-Filesystems welches gesichert werden soll')
+        parser.add_argument("-t","--to",dest='tofs',required=True,
+            help='Übergabe des ZFS-Filesystems auf welches gesichert werden soll')
+        parser.add_argument("-s","--sshdest",dest='sshdest',
+            help='Übergabe des per ssh zu erreichenden Destination-Rechners')
+        parser.add_argument('-p','--prefix',dest='prefix',help='Der Prefix für die Bezeichnungen der Snapshots',default='zfsnappy')
+        self.args = parser.parse_args()
+        print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Start')
+        print(time.strftime("%Y-%m-%d %H:%M:%S"),'Aufrufparameter:',' '.join(sys.argv[1:]))
+        if imrunning(ns.fromfs):
+            print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
+            exit()
         self.PREFIX = prefix
         if destserver != None:
             sshcmd = 'ssh -T '+destserver+' sudo '
@@ -333,20 +347,7 @@ class zfs_back(object):
             
    
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-f","--from",dest='fromfs',
-                      help='Übergabe des ZFS-Filesystems welches gesichert werden soll')
-    parser.add_argument("-t","--to",dest='tofs',required=True,
-                      help='Übergabe des ZFS-Filesystems auf welches gesichert werden soll')
-    parser.add_argument("-s","--sshdest",dest='sshdest',
-                      help='Übergabe des per ssh zu erreichenden Destination-Rechners')
-    parser.add_argument('-p','--prefix',dest='prefix',help='Der Prefix für die Bezeichnungen der Snapshots',default='zfsnappy')
-    ns = parser.parse_args(sys.argv[1:])
-    print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Start')
-    print(time.strftime("%Y-%m-%d %H:%M:%S"),'Aufrufparameter:',' '.join(sys.argv[1:]))
-    if imrunning(ns.fromfs):
-        print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
-        exit()
-    zfs = zfs_back(ns.fromfs,ns.tofs,ns.prefix,ns.sshdest)
+    
+    zfs = zfs_back()
     print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
         
