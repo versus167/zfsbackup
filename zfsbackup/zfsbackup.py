@@ -287,7 +287,7 @@ class zfs_back(object):
             newsnap = self.src.takenextsnap()
             self.src.hold_snap(newsnap)
             
-            cmdfrom = 'zfs send -vce '+newsnap
+            cmdfrom = 'zfs send -wv '+newsnap
             cmdto = sshcmd+'zfs receive -vsF '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
             
@@ -301,7 +301,7 @@ class zfs_back(object):
             oldsnap = self.src.fs+'@'+self.PREFIX+'_'+lastmatch
             self.src.hold_snap(newsnap)
             
-            cmdfrom = 'zfs send -vce -i '+oldsnap+' '+newsnap
+            cmdfrom = 'zfs send -vw -i '+oldsnap+' '+newsnap
             cmdto =  sshcmd+'zfs receive -Fvs '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
             self.src.clear_holdsnaps((oldsnap,newsnap))
@@ -318,7 +318,7 @@ class zfs_back(object):
         return lastmatch
     def resume_transport(self,token):
         # Setzt den Transport fort 
-        cmdfrom = 'zfs send -cevt '+token
+        cmdfrom = 'zfs send -wvt '+token
         cmdto = self.dst.connection+' zfs receive -Fvs '+self.dst.fs
         subrunPIPE(cmdfrom, cmdto)
     def dst_hold_update(self):
