@@ -125,11 +125,36 @@ class zfs_fs(object):
         '''
         Welches FS und worüber erreichen wir das
         '''
-        self.PREFIX = prefix
-        self.fs = fs
-        self.connection = connection
+        self.__PREFIX = prefix
+        self.__fs = fs
+        self.__connection = connection
+        self.__exist = None
         self.updatesnaplist() # Snaplist ohne Prefix sammeln
         pass
+
+    def get_prefix(self):
+        return self.__PREFIX
+
+
+    def get_fs(self):
+        return self.__fs
+
+
+    def get_connection(self):
+        return self.__connection
+
+
+    def get_exist(self):
+        return self.__exist
+
+
+    def get_snaplist(self):
+        return self.__snaplist
+
+
+    def set_exist(self, value):
+        self.__exist = value
+
     
     def get_token(self):
         ''' Schaut ob ein Token im Filesystem gespeichert ist '''
@@ -171,7 +196,7 @@ class zfs_fs(object):
         #print(zeit(),self.fs,self.PREFIX)
         #print(self.snaplist[-2:])
         return
-    def get_holdsnaps(self):
+    def __get_holdsnaps(self):
         '''
         Alternative zur Pipe-Variante
         
@@ -249,6 +274,11 @@ class zfs_fs(object):
 
     getoldsnap = property(get_oldsnap, None, None, None)
     lastsnap = property(get_lastsnap, None, None, None)
+    PREFIX = property(get_prefix, None, None, None)
+    fs = property(get_fs, None, None, None)
+    connection = property(get_connection, None, None, None)
+    exist = property(get_exist, set_exist, None, "Existiert das Filesystem bereits?")
+    snaplist = property(get_snaplist, None, None, None)
     
     
     
