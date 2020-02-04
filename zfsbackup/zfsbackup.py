@@ -128,9 +128,42 @@ class zfs_fs(object):
         self.__PREFIX = prefix
         self.__fs = fs
         self.__connection = connection
-        self.__exist = None
+        
+        temp = self.fs.split('/')
+        self.pool = temp[0]
+        self.dataset = temp[1:]
+        self.__check_pool_exist()
         self.updatesnaplist() # Snaplist ohne Prefix sammeln
         pass
+
+    def __check_pool_exist(self):
+        ''' Soll feststellen, ob der pool vorhanden und erreichbar ist ''' 
+        cmd = self.connection +' zpool list '+self.pool
+        ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True,checkretcode=True)
+        #print(ret.stdout)
+        ergeb = ret.stdout.split('\t')
+        try:
+            a = len(ergeb[2])
+        except:
+            a = 0
+        if a > 1 and ergeb[2] == 'active':
+            self.has_encryption = True
+        else:
+            self.has_encryption = False
+    def __check_encryption_feature(self):
+        ''' Soll feststellen, ob das feature encryption active ist im fs ''' 
+        cmd = self.connection +' zpool get -H feature@encryption '+self.pool
+        ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True,checkretcode=True)
+        #print(ret.stdout)
+        ergeb = ret.stdout.split('\t')
+        try:
+            a = len(ergeb[2])
+        except:
+            a = 0
+        if a > 1 and ergeb[2] == 'active':
+            self.has_encryption = True
+        else:
+            self.has_encryption = False
 
     def get_prefix(self):
         return self.__PREFIX
@@ -144,16 +177,8 @@ class zfs_fs(object):
         return self.__connection
 
 
-    def get_exist(self):
-        return self.__exist
-
-
     def get_snaplist(self):
         return self.__snaplist
-
-
-    def set_exist(self, value):
-        self.__exist = value
 
     
     def get_token(self):
@@ -277,7 +302,6 @@ class zfs_fs(object):
     PREFIX = property(get_prefix, None, None, None)
     fs = property(get_fs, None, None, None)
     connection = property(get_connection, None, None, None)
-    exist = property(get_exist, set_exist, None, "Existiert das Filesystem bereits?")
     snaplist = property(get_snaplist, None, None, None)
     
     
@@ -302,16 +326,19 @@ class zfs_back(object):
         self.args = parser.parse_args()
         print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Start')
         print(time.strftime("%Y-%m-%d %H:%M:%S"),'Aufrufparameter:',' '.join(sys.argv[1:]))
-        if imrunning(ns.fromfs):
+        if imrunning(self.args.fromfs):
             print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
             exit()
-        self.PREFIX = prefix
-        if destserver != None:
-            sshcmd = 'ssh -T '+destserver+' sudo '
+        self.PREFIX = self.args.prefix
+        if self.args.sshdest != None:
+            sshcmd = 'ssh -T '+self.args.sshdest+' sudo '
         else:
             sshcmd = ''
-        self.src = zfs_fs(srcfs,self.PREFIX)
-        self.dst = zfs_fs(dstfs,self.PREFIX,sshcmd)
+        self.src = zfs_fs(self.args.fromfs,self.PREFIX)
+        self.dst = zfs_fs(self.args.tofs,self.PREFIX,sshcmd)
+        print(self.src.pool,self.src.dataset,self.src.has_encryption)
+        print(self.dst.pool,self.dst.dataset,self.dst.has_encryption)
+        return
         print('Lastsnap Source: '+self.src.lastsnap)
         print('Lastsnap Destination: '+self.dst.lastsnap)
         
