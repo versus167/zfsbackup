@@ -133,12 +133,30 @@ class zfs_fs(object):
         self.pool = temp[0]
         self.dataset = temp[1:]
         self.__check_pool_exist()
-        self.updatesnaplist() # Snaplist ohne Prefix sammeln
+        self.__check_pool_has_encryption()
+        self.__check_dataset_exists()
+        self.__check_encryption_feature()
+        if self.dataset_exist == False:
+            self.__snaplist = []
+        else:
+            self.updatesnaplist() # Snaplist ohne Prefix sammeln
         pass
+
+    def get_pool_has_encryption(self):
+        return self.__pool_has_encryption
+
+
+    def get_dataset_exist(self):
+        return self.__dataset_exist
+
+
+    def get_has_encryption(self):
+        return self.__has_encryption
+
 
     def __check_pool_exist(self):
         ''' Soll feststellen, ob der pool vorhanden und erreichbar ist ''' 
-        cmd = self.connection +' zpool list '+self.pool
+        cmd = self.connection +' zpool list -H '+self.pool
         ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True,checkretcode=True)
         #print(ret.stdout)
         ergeb = ret.stdout.split('\t')
@@ -146,10 +164,27 @@ class zfs_fs(object):
             a = len(ergeb[2])
         except:
             a = 0
-        if a > 1 and ergeb[2] == 'active':
-            self.has_encryption = True
+        if a > 1 and ergeb[9] == 'ONLINE':
+            pass
         else:
-            self.has_encryption = False
+            print('Pool ist nicht vorhanden!')
+            exit(1)
+    def __check_pool_has_encryption(self):
+        ''' Kann der Pool überhaupt encryption? '''
+        cmd = self.connection +' zpool get -H feature@encryption '+self.pool
+        ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True,checkretcode=False)
+        if ret.returncode != 0:
+            self.__pool_has_encryption = False
+        else:
+            ergeb = ret.stdout.split('\t')
+            try:
+                a = len(ergeb[2])
+            except:
+                a = 0
+            if a > 1 and ergeb[2] == 'active':
+                self.__pool_has_encryption = True
+            else:
+                self.__pool_has_encryption = False
     def __check_encryption_feature(self):
         ''' Soll feststellen, ob das feature encryption active ist im fs ''' 
         cmd = self.connection +' zpool get -H feature@encryption '+self.pool
@@ -161,10 +196,17 @@ class zfs_fs(object):
         except:
             a = 0
         if a > 1 and ergeb[2] == 'active':
-            self.has_encryption = True
+            self.__has_encryption = True
         else:
-            self.has_encryption = False
-
+            self.__has_encryption = False
+    def __check_dataset_exists(self):
+        ''' Soll feststellen, ob das dataset vorhanden ist im fs ''' 
+        cmd = self.connection +' zfs list -H -d 1 -o name '+self.fs
+        ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True,checkretcode=False)
+        if ret.returncode != 0:
+            self.__dataset_exist = False
+        else:
+            self.__dataset_exist = True
     def get_prefix(self):
         return self.__PREFIX
 
@@ -203,7 +245,7 @@ class zfs_fs(object):
 
     def updatesnaplist(self):
         # Snaplist ohne Prefix
-        self.snaplist = []
+        self.__snaplist = []
         ret = subrun(self.connection+' zfs list -H -d 1 -t snapshot -o name '+self.fs,quiet=False,stdout=subprocess.PIPE,universal_newlines=True)
         ret.check_returncode()
         if ret.stdout == None:
@@ -214,10 +256,10 @@ class zfs_fs(object):
         
         for snp in ret.stdout.split('\n'):
             if snp[0:l] == vgl:
-                self.snaplist.append(snp[l:])
-        if len(self.snaplist) == 0:
+                self.__snaplist.append(snp[l:])
+        if len(self.__snaplist) == 0:
             return
-        self.snaplist.sort()
+        self.__snaplist.sort()
         #print(zeit(),self.fs,self.PREFIX)
         #print(self.snaplist[-2:])
         return
@@ -290,11 +332,11 @@ class zfs_fs(object):
         snapname = self.fs+'@'+self.PREFIX+'_'+aktuell.isoformat()
         ret = subrun(self.connection+' zfs snapshot '+snapname)
         ret.check_returncode()
-        self.snaplist.append(aktuell.isoformat())
+        self.__snaplist.append(aktuell.isoformat())
         return snapname
         
     def get_oldsnap(self):
-        return self.snaplist[-2]
+        return self.__snaplist[-2]
         pass
 
     getoldsnap = property(get_oldsnap, None, None, None)
@@ -303,6 +345,9 @@ class zfs_fs(object):
     fs = property(get_fs, None, None, None)
     connection = property(get_connection, None, None, None)
     snaplist = property(get_snaplist, None, None, None)
+    has_encryption = property(get_has_encryption, None, None, None)
+    dataset_exist = property(get_dataset_exist, None, None, None)
+    pool_has_encryption = property(get_pool_has_encryption, None, None, None)
     
     
     
@@ -336,11 +381,11 @@ class zfs_back(object):
             sshcmd = ''
         self.src = zfs_fs(self.args.fromfs,self.PREFIX)
         self.dst = zfs_fs(self.args.tofs,self.PREFIX,sshcmd)
-        print(self.src.pool,self.src.dataset,self.src.has_encryption)
-        print(self.dst.pool,self.dst.dataset,self.dst.has_encryption)
-        return
+        print(self.src.pool,self.src.dataset,self.src.dataset_exist,self.src.has_encryption,self.src.pool_has_encryption)
+        print(self.dst.pool,self.dst.dataset,self.dst.dataset_exist,self.dst.has_encryption,self.dst.pool_has_encryption)
         print('Lastsnap Source: '+self.src.lastsnap)
         print('Lastsnap Destination: '+self.dst.lastsnap)
+        return
         
         # 1. Schritt -> Token checken - falls ja, dann Versuch fortsetzen
         token = self.dst.get_token()
