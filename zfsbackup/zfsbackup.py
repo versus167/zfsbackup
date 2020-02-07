@@ -361,12 +361,18 @@ class zfs_back(object):
         src und dst anlegen 
         '''
         parser = argparse.ArgumentParser()
+        # Source Filesystem welches gesichert werden soll
         parser.add_argument("-f","--from",dest='fromfs',
             help='Übergabe des ZFS-Filesystems welches gesichert werden soll')
+        # Destination-FS
         parser.add_argument("-t","--to",dest='tofs',required=True,
             help='Übergabe des ZFS-Filesystems auf welches gesichert werden soll')
+        # Destination per ssh zu erreichen?
         parser.add_argument("-s","--sshdest",dest='sshdest',
             help='Übergabe des per ssh zu erreichenden Destination-Rechners')
+        # Soll encrypted-FS gesendet werden?
+        parser.add_argument('-c',dest="encrypted",help='Verschlüsselt (raw) senden',default=False,action='store_true')
+        # Prefix für die snapshots - Default: zfsnappy
         parser.add_argument('-p','--prefix',dest='prefix',help='Der Prefix für die Bezeichnungen der Snapshots',default='zfsnappy')
         self.args = parser.parse_args()
         print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Start')
@@ -386,7 +392,6 @@ class zfs_back(object):
         print('Lastsnap Source: '+self.src.lastsnap)
         print('Lastsnap Destination: '+self.dst.lastsnap)
         return
-        
         # 1. Schritt -> Token checken - falls ja, dann Versuch fortsetzen
         token = self.dst.get_token()
         
