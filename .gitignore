@@ -1,0 +1,10 @@
+
+.project
+
+.pydevproject
+
+.settings/org.eclipse.core.resources.prefs
+
+zfsbackup/files.xml
+
+zfsbackup/verzeichnis.xml
