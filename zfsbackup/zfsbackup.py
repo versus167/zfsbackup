@@ -40,6 +40,7 @@ Cmnd_Alias C_ZFS = \
   /sbin/zpool "", /sbin/zpool help *, \
   /sbin/zpool iostat, /sbin/zpool iostat *, \
   /sbin/zpool list, /sbin/zpool list *, \
+  /sbin/zpool get, /sbin/zpool get *, \
   /sbin/zpool status, /sbin/zpool status *, \
   /sbin/zpool upgrade, /sbin/zpool upgrade -v
 #
@@ -168,7 +169,7 @@ class zfs_fs(object):
             a = len(ergeb[2])
         except:
             a = 0
-        if a > 1 and ergeb[9] == 'ONLINE':
+        if a > 1 and 'ONLINE' in ergeb[1:]:
             pass
         else:
             print('Pool ist nicht vorhanden!')
