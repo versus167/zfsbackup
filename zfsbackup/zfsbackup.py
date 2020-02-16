@@ -5,7 +5,7 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
-
+2020-02-16 - logging, encryption - vs.
 2019-05-06 - Hold-auch für Destination eingefügt! - vs.
 2019-02-21 - Option prefix ergänzt - vs.
 2018-11-02 - Soweit sollte alles drin sein und einsatzfähig. Jetzt Praxistest - vs.
@@ -56,7 +56,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='5 - 2019-05-06'
+VERSION='2020.6 - 2020-02-16'
 LOGNAME = 'ZFSB'
 #SNAPPREFIX = 'zfsnappy'
 
@@ -85,12 +85,13 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
     zurück
     '''
     args = shlex.split(cmdfrom)
-    print(zeit(),' '.join(args))
+    log = logging.getLogger(LOGNAME)
+    log.debug(' '.join(args))
     #ret = subprocess.run(command,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
     #print(ret.stdout)
     #if checkretcode: ret.check_returncode()
     argsto = shlex.split(cmdto)
-    print(zeit(),'pipe to -> ',' '.join(argsto))
+    log.debug(f'pipe to -> {" ".join(argsto)}')
     ps = subprocess.Popen(args, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
     argsto = shlex.split(cmdto)
     ziel = subprocess.Popen(argsto, stdin=ps.stdout)
@@ -102,9 +103,10 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
         if test[-1] == vgl:
             if cnt > 30:
                 cnt = 0
-                print(line,end='')
+                log.info(line)
         else:
             vgl = test[-1]
+            log.info(line)
             print(line,end='')
             
 def imrunning(fs):
@@ -183,7 +185,7 @@ class zfs_fs(object):
                 a = len(ergeb[2])
             except:
                 a = 0
-            if a > 1 and ergeb[2] == 'active':
+            if a > 1 and (ergeb[2] == 'active' or ergeb[2] == 'enabled'):
                 self.__pool_has_encryption = True
             else:
                 self.__pool_has_encryption = False
@@ -319,7 +321,7 @@ class zfs_fs(object):
     def clear_holdsnaps(self,listholdsnaps):
         ''' Löscht die HOLD-Flags außer der übergebenen Snaps'''
         #print(listholdsnaps)
-        for i in self.get_holdsnaps():
+        for i in self.__get_holdsnaps():
             if i in listholdsnaps:
                 pass
             else:
@@ -398,13 +400,14 @@ class zfs_back(object):
         self.dst = zfs_fs(self.args.tofs,self.PREFIX,sshcmd)
         
         
-        print(self.src.pool,self.src.dataset,self.src.dataset_exist,self.src.has_encryption,self.src.pool_has_encryption)
-        print(self.dst.pool,self.dst.dataset,self.dst.dataset_exist,self.dst.has_encryption,self.dst.pool_has_encryption)
-        print('Lastsnap Source: '+self.src.lastsnap)
-        print('Lastsnap Destination: '+self.dst.lastsnap)
-        return
+        self.logger.debug(f'SRC: {self.src.fs} exist: {self.src.dataset_exist} encryption: {self.src.has_encryption} pool_encryption: {self.src.pool_has_encryption}')
+        self.logger.debug(f'DST: {self.dst.fs} exist: {self.dst.dataset_exist} encryption: {self.dst.has_encryption} pool_encryption: {self.dst.pool_has_encryption}')
+        
         # 1. Schritt -> Token checken - falls ja, dann Versuch fortsetzen
-        token = self.dst.get_token()
+        if self.dst.dataset_exist:
+            token = self.dst.get_token()
+        else: 
+            token = None
         
         if token != None:
             self.resume_transport(token)
@@ -414,12 +417,23 @@ class zfs_back(object):
         
         # 2. Schritt -> Wie lautet der neueste identische Snapshot?
         lastmatch = self.get_lastmatch()
+        
         if lastmatch == None:
-            # es gibt also keinen identischen Snapshot -> Damit Versuch neuen Snapshot zu senden und FS zu erstellen
+            # es gibt also keinen identischen Snapshot -> Damit Versuch neuen Snapshot zu senden und fs zu senden
+            if self.dst.dataset_exist:
+                self.logger.error(f'Das Zieldataset existiert bereits und es gbt keinen identischen Snapshot')
+                exit(1)
+            if self.src.has_encryption and self.dst.pool_has_encryption == False:
+                self.logger.error('Das Source-Dataset hat encryption aktiv, aber der Zielpool nicht!')
+                exit(1)
             newsnap = self.src.takenextsnap()
             self.src.hold_snap(newsnap)
-            
-            cmdfrom = 'zfs send -wv '+newsnap
+            if self.src.has_encryption:
+                # add w to command
+                addcmd = 'w'
+            else:
+                addcmd = ''
+            cmdfrom = f'zfs send -{addcmd}v {newsnap}'
             cmdto = sshcmd+'zfs receive -vs '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
             
@@ -432,8 +446,12 @@ class zfs_back(object):
             newsnap = self.src.takenextsnap()
             oldsnap = self.src.fs+'@'+self.PREFIX+'_'+lastmatch
             self.src.hold_snap(newsnap)
-            
-            cmdfrom = 'zfs send -vw -i '+oldsnap+' '+newsnap
+            if self.src.has_encryption:
+                # add w to command
+                addcmd = 'w'
+            else:
+                addcmd = ''
+            cmdfrom = f'zfs send -v{addcmd} -i {oldsnap} {newsnap}'
             cmdto =  sshcmd+'zfs receive -Fvs '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
             self.src.clear_holdsnaps((oldsnap,newsnap))
@@ -450,7 +468,12 @@ class zfs_back(object):
         return lastmatch
     def resume_transport(self,token):
         # Setzt den Transport fort 
-        cmdfrom = 'zfs send -wvt '+token
+        if self.src.has_encryption:
+            # add w to command
+            addcmd = 'w'
+        else:
+            addcmd = ''
+        cmdfrom = f'zfs send -{addcmd}vt {token}'
         cmdto = self.dst.connection+' zfs receive -Fvs '+self.dst.fs
         subrunPIPE(cmdfrom, cmdto)
     def dst_hold_update(self):
@@ -467,5 +490,5 @@ class zfs_back(object):
 if __name__ == '__main__':
     
     zfs = zfs_back()
-    print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
+    zfs.logger.info(f'{APPNAME} - {VERSION}  ************************** Stop')
         
