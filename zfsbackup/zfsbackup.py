@@ -57,22 +57,24 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 APPNAME='zfsbackup'
 VERSION='5 - 2019-05-06'
+LOGNAME = 'ZFSB'
 #SNAPPREFIX = 'zfsnappy'
 
 
 import subprocess,shlex, argparse
 import time,sys, datetime
+import logging
 
 def zeit():
     return time.strftime("%Y-%m-%d %H:%M:%S")
-def subrun(command,quiet=False,checkretcode=True,**kwargs):
+def subrun(command,checkretcode=True,**kwargs):
     '''
     Führt die übergeben Kommandozeile aus und gibt das Ergebnis
     zurück
     '''
+    log = logging.getLogger(LOGNAME)
     args = shlex.split(command)
-    if quiet == False:
-        print(zeit(),' '.join(args))
+    log.debug(' '.join(args))
     ret = subprocess.run(args,**kwargs)
     if checkretcode: ret.check_returncode()
     return ret
@@ -106,7 +108,7 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
             print(line,end='')
             
 def imrunning(fs):
-    
+    log = logging.getLogger(LOGNAME)
     psfaxu = subrun('ps fax',stdout=subprocess.PIPE,universal_newlines=True)
     pids = []
     for i in psfaxu.stdout.split('\n'):
@@ -114,7 +116,7 @@ def imrunning(fs):
         if '/usr/bin/python3' in i and 'zfsbackup.py' in i and fs in i:
             pids.append(i.strip(' ').split(' ')[0])
     if len(pids) > 1:
-        print(time.strftime("%Y-%m-%d %H:%M:%S"),'Looft bereits! pids: ',pids)
+        log.info(f'Looft bereits! pids: {pids}')
         return True
 
 class zfs_fs(object):
@@ -246,7 +248,7 @@ class zfs_fs(object):
     def updatesnaplist(self):
         # Snaplist ohne Prefix
         self.__snaplist = []
-        ret = subrun(self.connection+' zfs list -H -d 1 -t snapshot -o name '+self.fs,quiet=False,stdout=subprocess.PIPE,universal_newlines=True)
+        ret = subrun(self.connection+' zfs list -H -d 1 -t snapshot -o name '+self.fs,stdout=subprocess.PIPE,universal_newlines=True)
         ret.check_returncode()
         if ret.stdout == None:
             return
@@ -375,10 +377,17 @@ class zfs_back(object):
         # Prefix für die snapshots - Default: zfsnappy
         parser.add_argument('-p','--prefix',dest='prefix',help='Der Prefix für die Bezeichnungen der Snapshots',default='zfsnappy')
         self.args = parser.parse_args()
-        print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Start')
-        print(time.strftime("%Y-%m-%d %H:%M:%S"),'Aufrufparameter:',' '.join(sys.argv[1:]))
+        self.logger = logging.getLogger(LOGNAME)
+        self.logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        
+        fh = logging.StreamHandler()
+        fh.setFormatter(formatter)
+        self.logger.addHandler(fh)
+        self.logger.info(f'{APPNAME} - {VERSION}  ************************** Start')
+        self.logger.debug(self.args)
         if imrunning(self.args.fromfs):
-            print(time.strftime("%Y-%m-%d %H:%M:%S"),APPNAME, VERSION,' ************************** Stop')
+            self.logger.info(f'{APPNAME} - {VERSION}  ************************** Stop')
             exit()
         self.PREFIX = self.args.prefix
         if self.args.sshdest != None:
@@ -387,6 +396,8 @@ class zfs_back(object):
             sshcmd = ''
         self.src = zfs_fs(self.args.fromfs,self.PREFIX)
         self.dst = zfs_fs(self.args.tofs,self.PREFIX,sshcmd)
+        
+        
         print(self.src.pool,self.src.dataset,self.src.dataset_exist,self.src.has_encryption,self.src.pool_has_encryption)
         print(self.dst.pool,self.dst.dataset,self.dst.dataset_exist,self.dst.has_encryption,self.dst.pool_has_encryption)
         print('Lastsnap Source: '+self.src.lastsnap)
