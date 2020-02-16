@@ -1,0 +1,9 @@
+Package: zfsbackup
+Version: 2020.6
+Section: server
+Priority: optional
+Architecture: all
+Essential: no
+Installed-size: 18
+Maintainer: Volker Süß
+Description: ZFS Backup von SRC-Dataset auf DST-Dataset - auch mit encryption
