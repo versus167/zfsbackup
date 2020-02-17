@@ -1,5 +1,5 @@
 Package: zfsbackup
-Version: 2020.6
+Version: 2020.7
 Section: server
 Priority: optional
 Architecture: all

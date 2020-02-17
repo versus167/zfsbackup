@@ -57,7 +57,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2020.6 - 2020-02-16'
+VERSION='2020.7 - 2020-02-16'
 LOGNAME = 'ZFSB'
 #SNAPPREFIX = 'zfsnappy'
 
@@ -294,25 +294,6 @@ class zfs_fs(object):
                     holdsnaps.append(j[1])
         return holdsnaps
         
-
-#     def get_holdnsaps(self):
-#         '''
-#         Gibt eine Liste mit Holdsnaps zurück
-#         
-#         zfs list -H -d 1 -t snapshot -o name vs2016/archiv/virtualbox | xargs zfs holds 
-#         '''
-#         cmdfrom = shlex.split(self.connection+ ' zfs list -H -d 1 -t snapshot -o name '+self.fs)
-#         cmdto = shlex.split(self.connection+' xargs zfs holds -H')
-#         holdsnaps = []
-#         pfrom = subprocess.Popen(cmdfrom, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
-#         pto =   subprocess.Popen(cmdto  , stdin=pfrom.stdout,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True,encoding='UTF-8')
-#         vgl = self.fs+'@'+self.PREFIX+'_'
-#         l = len(vgl)
-#         for line in pto.stdout:
-#             snp = line.split('\t')[0]
-#             if snp[0:l] == vgl:
-#                holdsnaps.append(snp)
-#         return holdsnaps
     
     def hold_snap(self,snapshotname):
         ''' Setzt den übergeben Snapshot auf Hold  - kompletter Name wird übergeben'''
