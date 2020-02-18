@@ -108,7 +108,7 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
         else:
             vgl = test[-1]
             log.info(line)
-            print(line,end='')
+            #print(line,end='')
             
 def imrunning(fs):
     log = logging.getLogger(LOGNAME)
