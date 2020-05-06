@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 '''
+PYTHON_ARGCOMPLETE_OK
+
 Created on 28.06.2018
 
 @author: Volker Süß
@@ -62,7 +64,7 @@ LOGNAME = 'ZFSB'
 #SNAPPREFIX = 'zfsnappy'
 
 
-import subprocess,shlex, argparse
+import subprocess,shlex, argparse, argcomplete
 import time,sys, datetime
 import logging
 
@@ -359,6 +361,7 @@ class zfs_back(object):
         parser.add_argument('-d',dest="debugging",help='Debug-Level-Ausgaben',default=False,action='store_true')
         # Prefix für die snapshots - Default: zfsnappy
         parser.add_argument('-p','--prefix',dest='prefix',help='Der Prefix für die Bezeichnungen der Snapshots',default='zfsnappy')
+        argcomplete.autocomplete(parser) # bash completion
         self.args = parser.parse_args()
         self.logger = logging.getLogger(LOGNAME)
         if self.args.debugging:
