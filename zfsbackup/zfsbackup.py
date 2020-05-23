@@ -7,6 +7,7 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
+2020-05-23 - argcomplete - vs.
 2020-02-16 - logging, encryption - vs.
 2019-05-06 - Hold-auch für Destination eingefügt! - vs.
 2019-02-21 - Option prefix ergänzt - vs.
@@ -59,7 +60,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2020.7 - 2020-02-16'
+VERSION='2020.8 - 2020-05-23'
 LOGNAME = 'ZFSB'
 #SNAPPREFIX = 'zfsnappy'
 
