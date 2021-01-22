@@ -7,6 +7,7 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
+2021-01-22 - Problem mit holdsnaps - offen
 2020-05-23 - argcomplete - vs.
 2020-02-16 - logging, encryption - vs.
 2019-05-06 - Hold-auch für Destination eingefügt! - vs.
@@ -470,7 +471,7 @@ class zfs_back(object):
         # alle Snaps aufzulisten
         time.sleep(30) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
-        #print('Dieser Snap im dst wird auf Hold gesetzt: ',self.dst.lastsnap)
+        self.logger.debug('Dieser Snap im dst wird auf Hold gesetzt: ',self.dst.lastsnap)
         self.dst.hold_snap(self.dst.lastsnap)
         self.dst.clear_holdsnaps((self.dst.lastsnap,))
             
