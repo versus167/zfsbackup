@@ -134,6 +134,7 @@ class zfs_fs(object):
         '''
         Welches FS und worüber erreichen wir das
         '''
+        self.logger = logging.getLogger(LOGNAME)
         self.__PREFIX = prefix
         self.__fs = fs
         self.__connection = connection
@@ -301,9 +302,21 @@ class zfs_fs(object):
     
     def hold_snap(self,snapshotname):
         ''' Setzt den übergeben Snapshot auf Hold  - kompletter Name wird übergeben'''
+        if self.is_snap_hold(snapshotname):
+            self.logger.debug(f'Snapshot ist bereits auf hold: {self.connection} {snapshotname}')
+            return
         cmd = self.connection+' zfs hold keep '+snapshotname
         subrun(cmd)
-    
+    def is_snap_hold(self,snapshotname):
+        ''' Return true, wenn schon auf hold '''
+        cmd = self.connection+' zfs holds -H '+snapshotname
+        ret = subrun(cmd,capture_output=True,text=True)
+        erg = ret.stdout.split()
+        if len(erg) < 2:
+            return False
+        if erg[1] == 'keep':
+            return True
+        return False
     def clear_holdsnaps(self,listholdsnaps):
         ''' Löscht die HOLD-Flags außer der übergebenen Snaps'''
         #print(listholdsnaps)
@@ -471,7 +484,7 @@ class zfs_back(object):
         # alle Snaps aufzulisten
         time.sleep(30) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
-        self.logger.debug('Dieser Snap im dst wird auf Hold gesetzt: ',self.dst.lastsnap)
+        self.logger.debug(f'Dieser Snap im dst wird auf Hold gesetzt: {self.dst.lastsnap}')
         self.dst.hold_snap(self.dst.lastsnap)
         self.dst.clear_holdsnaps((self.dst.lastsnap,))
             
