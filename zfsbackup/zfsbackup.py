@@ -22,7 +22,7 @@ Abschirmung zwischen src- und dst-Filesystem weg, Über rsync ist die Sicherung 
 
 die über snapshots vom Zugriff des Senderechners ausgeschlossen war. 
 
--> Man kann aber ja imho auch nur bestimmte Kommandos eines Befehls auf suod machen lassen (ohne alle Rechte zu 
+-> Man kann aber ja imho auch nur bestimmte Kommandos eines Befehls auf sudo machen lassen (ohne alle Rechte zu 
 haben). Das wäre vlt. die Möglichkeit, das ganze doch noch zu nutzen. Wenn ich am Ziel weder FS noch snapshots 
 löschen kann, dann besteht eigentlich auch kein Risiko? 26/10/18
 
