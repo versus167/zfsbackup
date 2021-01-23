@@ -59,6 +59,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 -> wenn kein Token vorhanden ist, oder die Verwendung nicht klappt -> alle Holds freigeben   
 
 '''
+from numpy.distutils.fcompiler import none
 
 
 APPNAME='zfsbackup'
@@ -139,8 +140,8 @@ class zfs_fs(object):
         self.__PREFIX = prefix
         self.__fs = fs
         self.__connection = connection
-        self.__connectionsudo = connectiosudo
-        
+        self.__connectionsudo = connectionsudo
+        self.logger.debug(f'{self.fs} - {self.connection} - {self.connectionsudo}')
         temp = self.fs.split('/')
         self.pool = temp[0]
         self.dataset = temp[1:]
@@ -351,7 +352,7 @@ class zfs_fs(object):
     PREFIX = property(get_prefix, None, None, None)
     fs = property(get_fs, None, None, None)
     connection = property(get_connection, None, None, None)
-    connectionsudo = property(get_connection, None, None, None)
+    connectionsudo = property(get_connectionsudo, None, None, None)
     snaplist = property(get_snaplist, None, None, None)
     has_encryption = property(get_has_encryption, None, None, None)
     dataset_exist = property(get_dataset_exist, None, None, None)
@@ -400,13 +401,14 @@ class zfs_back(object):
             exit()
         self.PREFIX = self.args.prefix
         if self.args.sshdest != None:
-            sshcmdwithoudsudo = 'ssh -T '+self.args.sshdest
-            sshcmdsudo = sshcmdwithoudsudo +' sudo '
+            sshcmdwithoutsudo = 'ssh -T '+self.args.sshdest+' '
+            sshcmdsudo = sshcmdwithoutsudo +'sudo '
         else:
             sshcmdsudo = ''
             sshcmdwithoutsudo = ''
+        self.logger.debug(f'{self.args.tofs} - {sshcmdwithoutsudo} - {sshcmdsudo}')
         self.src = zfs_fs(self.args.fromfs,self.PREFIX)
-        self.dst = zfs_fs(self.args.tofs,self.PREFIX,sshcmdsudo=sshcmdsudo,sshcmdwithoutsudo=sshcmdwithoudsudo)
+        self.dst = zfs_fs(self.args.tofs,self.PREFIX,connectionsudo=sshcmdsudo,connection=sshcmdwithoutsudo)
         
         
         self.logger.debug(f'SRC: {self.src.fs} exist: {self.src.dataset_exist} encryption: {self.src.has_encryption} pool_encryption: {self.src.pool_has_encryption}')
@@ -439,11 +441,11 @@ class zfs_back(object):
             self.src.hold_snap(newsnap)
             if self.src.has_encryption:
                 # add w to command
-                addcmd = 'w'
+                addcmd = '-w'
             else:
                 addcmd = ''
-            cmdfrom = f'zfs send -{addcmd}v {newsnap}'
-            cmdto = sshcmd+'zfs receive -vs '+self.dst.fs
+            cmdfrom = f'zfs send {addcmd} {newsnap}' # -v mal weggelassen
+            cmdto = sshcmdsudo+'zfs receive -vs '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
             
             self.src.clear_holdsnaps((newsnap,))
@@ -457,11 +459,11 @@ class zfs_back(object):
             self.src.hold_snap(newsnap)
             if self.src.has_encryption:
                 # add w to command
-                addcmd = 'w'
+                addcmd = '-w'
             else:
                 addcmd = ''
-            cmdfrom = f'zfs send -v{addcmd} -i {oldsnap} {newsnap}'
-            cmdto =  sshcmd+'zfs receive -Fvs '+self.dst.fs
+            cmdfrom = f'zfs send {addcmd} -i {oldsnap} {newsnap}'
+            cmdto =  sshcmdsudo+'zfs receive -vFs '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
             self.src.clear_holdsnaps((oldsnap,newsnap))
             self.dst_hold_update()
