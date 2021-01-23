@@ -7,6 +7,7 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
+2021-01-23 - sudo auf Destination etwas feiner abgestimmt - vs.
 2021-01-22 - Problem mit holdsnaps - vs.
 2020-05-23 - argcomplete - vs.
 2020-02-16 - logging, encryption - vs.
@@ -61,7 +62,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2020.9 - 2021-01-22'
+VERSION='2021.10 - 2021-01-23'
 LOGNAME = 'ZFSB'
 #SNAPPREFIX = 'zfsnappy'
 
@@ -130,7 +131,7 @@ class zfs_fs(object):
     '''
     Alles rund um das Filesystem direkt
     '''
-    def __init__(self,fs,prefix,connection = ''):
+    def __init__(self,fs,prefix,connection = '',connectionsudo = ''):
         '''
         Welches FS und worüber erreichen wir das
         '''
@@ -138,6 +139,7 @@ class zfs_fs(object):
         self.__PREFIX = prefix
         self.__fs = fs
         self.__connection = connection
+        self.__connectionsudo = connectiosudo
         
         temp = self.fs.split('/')
         self.pool = temp[0]
@@ -227,7 +229,9 @@ class zfs_fs(object):
 
     def get_connection(self):
         return self.__connection
-
+    
+    def get_connectionsudo(self):
+        return self.__connectionsudo
 
     def get_snaplist(self):
         return self.__snaplist
@@ -305,7 +309,7 @@ class zfs_fs(object):
         if self.is_snap_hold(snapshotname):
             self.logger.debug(f'Snapshot ist bereits auf hold: {self.connection} {snapshotname}')
             return
-        cmd = self.connection+' zfs hold keep '+snapshotname
+        cmd = self.connectionsudo+' zfs hold keep '+snapshotname
         subrun(cmd)
     def is_snap_hold(self,snapshotname):
         ''' Return true, wenn schon auf hold '''
@@ -324,7 +328,7 @@ class zfs_fs(object):
             if i in listholdsnaps:
                 pass
             else:
-                cmd = self.connection+' zfs release -r keep '+i
+                cmd = self.connectionsudo+' zfs release -r keep '+i
                 subrun(cmd)
     def takenextsnap(self):
         ''' 
@@ -333,7 +337,7 @@ class zfs_fs(object):
         '''
         aktuell = datetime.datetime.now()
         snapname = self.fs+'@'+self.PREFIX+'_'+aktuell.isoformat()
-        ret = subrun(self.connection+' zfs snapshot '+snapname)
+        ret = subrun(self.connectionsudo+' zfs snapshot '+snapname)
         ret.check_returncode()
         self.__snaplist.append(aktuell.isoformat())
         return snapname
@@ -347,6 +351,7 @@ class zfs_fs(object):
     PREFIX = property(get_prefix, None, None, None)
     fs = property(get_fs, None, None, None)
     connection = property(get_connection, None, None, None)
+    connectionsudo = property(get_connection, None, None, None)
     snaplist = property(get_snaplist, None, None, None)
     has_encryption = property(get_has_encryption, None, None, None)
     dataset_exist = property(get_dataset_exist, None, None, None)
@@ -395,11 +400,13 @@ class zfs_back(object):
             exit()
         self.PREFIX = self.args.prefix
         if self.args.sshdest != None:
-            sshcmd = 'ssh -T '+self.args.sshdest+' sudo '
+            sshcmdwithoudsudo = 'ssh -T '+self.args.sshdest
+            sshcmdsudo = sshcmdwithoudsudo +' sudo '
         else:
-            sshcmd = ''
+            sshcmdsudo = ''
+            sshcmdwithoutsudo = ''
         self.src = zfs_fs(self.args.fromfs,self.PREFIX)
-        self.dst = zfs_fs(self.args.tofs,self.PREFIX,sshcmd)
+        self.dst = zfs_fs(self.args.tofs,self.PREFIX,sshcmdsudo=sshcmdsudo,sshcmdwithoutsudo=sshcmdwithoudsudo)
         
         
         self.logger.debug(f'SRC: {self.src.fs} exist: {self.src.dataset_exist} encryption: {self.src.has_encryption} pool_encryption: {self.src.pool_has_encryption}')
@@ -476,7 +483,7 @@ class zfs_back(object):
         else:
             addcmd = ''
         cmdfrom = f'zfs send -{addcmd}vt {token}'
-        cmdto = self.dst.connection+' zfs receive -Fvs '+self.dst.fs
+        cmdto = self.dst.connectionsudo+' zfs receive -Fvs '+self.dst.fs
         subrunPIPE(cmdfrom, cmdto)
     def dst_hold_update(self):
         ''' setzt den letzten (aktuellsten) Snap auf Hold und released die anderen '''
