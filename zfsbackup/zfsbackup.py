@@ -6,7 +6,7 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
-2021-01-25 - fix typo - vs.
+2021-01-25 - fix typo, entferne argcomplete - vs.
 2021-01-23 - sudo auf Destination etwas feiner abgestimmt - vs.
 2021-01-22 - Problem mit holdsnaps - vs.
 2020-05-23 - argcomplete - vs.
@@ -62,7 +62,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.11 - 2021-01-25'
+VERSION='2021.11b - 2021-01-25'
 LOGNAME = 'ZFSB'
 #SNAPPREFIX = 'zfsnappy'
 
