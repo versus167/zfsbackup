@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 '''
-PYTHON_ARGCOMPLETE_OK
 
 Created on 28.06.2018
 
@@ -68,7 +67,7 @@ LOGNAME = 'ZFSB'
 #SNAPPREFIX = 'zfsnappy'
 
 
-import subprocess,shlex, argparse, argcomplete
+import subprocess,shlex, argparse
 import time,sys, datetime
 import logging
 
