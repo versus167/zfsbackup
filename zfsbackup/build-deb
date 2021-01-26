@@ -1,4 +1,6 @@
 #!/bin/bash
 cp zfsbackup.py ./zfsbackup/usr/bin/zfsbackup
+chown root:root ./zfsbackup/usr/bin/zfsbackup
+
 dpkg-deb --build zfsbackup
 

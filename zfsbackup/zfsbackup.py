@@ -64,7 +64,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 APPNAME='zfsbackup'
 VERSION='2021.11b - 2021-01-25'
 LOGNAME = 'ZFSB'
-#SNAPPREFIX = 'zfsnappy'
+
 
 
 import subprocess,shlex, argparse
