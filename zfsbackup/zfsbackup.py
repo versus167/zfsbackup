@@ -62,7 +62,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.11b - 2021-01-25'
+VERSION='2021.11 - 2021-01-25'
 LOGNAME = 'ZFSB'
 
 
@@ -381,7 +381,6 @@ class zfs_back(object):
         parser.add_argument('-d',dest="debugging",help='Debug-Level-Ausgaben',default=False,action='store_true')
         # Prefix für die snapshots - Default: zfsnappy
         parser.add_argument('-p','--prefix',dest='prefix',help='Der Prefix für die Bezeichnungen der Snapshots',default='zfsnappy')
-        argcomplete.autocomplete(parser) # bash completion
         self.args = parser.parse_args()
         self.logger = logging.getLogger(LOGNAME)
         if self.args.debugging:
