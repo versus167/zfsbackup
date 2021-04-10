@@ -6,6 +6,7 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
+2021-04-10 - Info zum Ziel des Backup in log.info aufgenommen - vs.
 2021-01-25 - fix typo, entferne argcomplete - vs.
 2021-01-23 - sudo auf Destination etwas feiner abgestimmt - vs.
 2021-01-22 - Problem mit holdsnaps - vs.
@@ -62,7 +63,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.11 - 2021-01-25'
+VERSION='2021.12 - 2021-04-10'
 LOGNAME = 'ZFSB'
 
 
@@ -97,7 +98,7 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
     #print(ret.stdout)
     #if checkretcode: ret.check_returncode()
     argsto = shlex.split(cmdto)
-    log.debug(f'pipe to -> {" ".join(argsto)}')
+    log.info(f'pipe to -> {" ".join(argsto)}')
     ps = subprocess.Popen(args, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
     argsto = shlex.split(cmdto)
     ziel = subprocess.Popen(argsto, stdin=ps.stdout)
