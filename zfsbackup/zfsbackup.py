@@ -6,6 +6,7 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
+2021-08-05 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots - vs.
 2021-04-10 - Info zum Ziel des Backup in log.info aufgenommen - vs.
 2021-01-25 - fix typo, entferne argcomplete - vs.
 2021-01-23 - sudo auf Destination etwas feiner abgestimmt - vs.
@@ -63,7 +64,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.12 - 2021-04-10'
+VERSION='2021.12.1 - 2021-08-05'
 LOGNAME = 'ZFSB'
 
 
@@ -132,7 +133,7 @@ class zfs_fs(object):
     '''
     Alles rund um das Filesystem direkt
     '''
-    def __init__(self,fs,prefix,connection = '',connectionsudo = ''):
+    def __init__(self,fs,prefix,connection = '',connectionsudo = '',holdtag= 'keep'):
         '''
         Welches FS und worüber erreichen wir das
         '''
@@ -145,6 +146,7 @@ class zfs_fs(object):
         temp = self.fs.split('/')
         self.pool = temp[0]
         self.dataset = temp[1:]
+        self.holdtag = holdtag
         self.__check_pool_exist()
         self.__check_pool_has_encryption()
         self.__check_dataset_exists()
@@ -310,17 +312,19 @@ class zfs_fs(object):
         if self.is_snap_hold(snapshotname):
             self.logger.debug(f'Snapshot ist bereits auf hold: {self.connection} {snapshotname}')
             return
-        cmd = self.connectionsudo+' zfs hold keep '+snapshotname
+        cmd = self.connectionsudo+' zfs hold '+self.holdtag+' '+snapshotname
         subrun(cmd)
-    def is_snap_hold(self,snapshotname):
+    def is_snap_hold(snapshotname):
         ''' Return true, wenn schon auf hold '''
-        cmd = self.connection+' zfs holds -H '+snapshotname
+        cmd = 'zfs holds -H '+snapshotname
         ret = subrun(cmd,capture_output=True,text=True)
-        erg = ret.stdout.split()
-        if len(erg) < 2:
-            return False
-        if erg[1] == 'keep':
-            return True
+        erg = ret.stdout.split('\n')
+        for i in erg:
+            t1 = i.split('\t')
+            if len(t1) < 2:
+                return False
+            if t1[1] == self.holdtag:
+                return True
         return False
     def clear_holdsnaps(self,listholdsnaps):
         ''' Löscht die HOLD-Flags außer der übergebenen Snaps'''
@@ -329,14 +333,15 @@ class zfs_fs(object):
             if i in listholdsnaps:
                 pass
             else:
-                cmd = self.connectionsudo+' zfs release -r keep '+i
-                subrun(cmd)
+                if self.is_snap_hold(i):
+                    cmd = self.connectionsudo+' zfs release -r '+self.holdtag+' '+i
+                    subrun(cmd)
     def takenextsnap(self):
         ''' 
-        Hier wird ein neuer Snap gesetzt - Wenn erfolgreich, dann alle übrigen Holds löschen und den neuen auf 
+        Hier wird ein neuer Snapshot gesetzt - Wenn erfolgreich, dann alle übrigen Holds löschen und den neuen auf 
         Hold setzen
         '''
-        aktuell = datetime.datetime.now()
+        aktuell = datetime.datetime.utcnow()
         snapname = self.fs+'@'+self.PREFIX+'_'+aktuell.isoformat()
         ret = subrun(self.connectionsudo+' zfs snapshot '+snapname)
         ret.check_returncode()
@@ -382,6 +387,8 @@ class zfs_back(object):
         parser.add_argument('-d',dest="debugging",help='Debug-Level-Ausgaben',default=False,action='store_true')
         # Prefix für die snapshots - Default: zfsnappy
         parser.add_argument('-p','--prefix',dest='prefix',help='Der Prefix für die Bezeichnungen der Snapshots',default='zfsnappy')
+        parser.add_argument('--holdtag',dest='holdtag',help='Die Bezeichnung des tags für den Hold-Status',default='keep')
+        parser.add_argument('-x','--no_snapshot',dest='nosnapshot',help='Verwenden, wenn kein neuer Snapshot erstellt werden soll',default=False,action='store_true')
         self.args = parser.parse_args()
         self.logger = logging.getLogger(LOGNAME)
         if self.args.debugging:
@@ -406,8 +413,8 @@ class zfs_back(object):
             sshcmdsudo = ''
             sshcmdwithoutsudo = ''
         self.logger.debug(f'{self.args.tofs} - {sshcmdwithoutsudo} - {sshcmdsudo}')
-        self.src = zfs_fs(self.args.fromfs,self.PREFIX)
-        self.dst = zfs_fs(self.args.tofs,self.PREFIX,connectionsudo=sshcmdsudo,connection=sshcmdwithoutsudo)
+        self.src = zfs_fs(self.args.fromfs,self.PREFIX,holdtag=self.args.holdtag)
+        self.dst = zfs_fs(self.args.tofs,self.PREFIX,connectionsudo=sshcmdsudo,connection=sshcmdwithoutsudo,holdtag=self.args.holdtag)
         
         
         self.logger.debug(f'SRC: {self.src.fs} exist: {self.src.dataset_exist} encryption: {self.src.has_encryption} pool_encryption: {self.src.pool_has_encryption}')
@@ -436,7 +443,10 @@ class zfs_back(object):
             if self.src.has_encryption and self.dst.pool_has_encryption == False:
                 self.logger.error('Das Source-Dataset hat encryption aktiv, aber der Zielpool nicht!')
                 exit(1)
-            newsnap = self.src.takenextsnap()
+            if self.arg.nosnapshot:
+                newsnap = self.src.lastsnap
+            else:
+                newsnap = self.src.takenextsnap()
             self.src.hold_snap(newsnap)
             if self.src.has_encryption:
                 # add w to command
@@ -453,8 +463,14 @@ class zfs_back(object):
         
         else:
             # es gibt also einen gemeinsamen Snapshot - neuen Snapshot erstellen und inkrementell senden
-            newsnap = self.src.takenextsnap()
+            if self.args.nosnapshot:
+                newsnap = self.src.lastsnap
+            else:
+                newsnap = self.src.takenextsnap()
             oldsnap = self.src.fs+'@'+self.PREFIX+'_'+lastmatch
+            if oldsnap == newsnap:
+                self.logger.info(f"Keine neuen Snapshots zu übertragen. {newsnap} ist bereits am Ziel vorhanden")
+                return
             self.src.hold_snap(newsnap)
             if self.src.has_encryption:
                 # add w to command
