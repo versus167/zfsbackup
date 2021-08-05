@@ -309,6 +309,7 @@ class zfs_fs(object):
     
     def hold_snap(self,snapshotname):
         ''' Setzt den übergeben Snapshot auf Hold  - kompletter Name wird übergeben'''
+        self.logger.debug(snapshotname)
         if self.is_snap_hold(snapshotname):
             self.logger.debug(f'Snapshot ist bereits auf hold: {self.connection} {snapshotname}')
             return
