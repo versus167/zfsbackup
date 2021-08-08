@@ -6,10 +6,9 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
-geplant -r -für rekursive Ausführung
-
-2021-08-07 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots 
-             Initoptions für target -o compression=lzr und -o rdonly=on- vs.
+2021.13 2021-08-07 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots 
+                     Initoptions für target -o compression=lzr und -o rdonly=on
+                     -r für rekursive Ausführung - vs.
 2021-04-10 - Info zum Ziel des Backup in log.info aufgenommen - vs.
 2021-01-25 - fix typo, entferne argcomplete - vs.
 2021-01-23 - sudo auf Destination etwas feiner abgestimmt - vs.
@@ -67,7 +66,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.12.3 - 2021-08-08'
+VERSION='2021.13 - 2021-08-08'
 LOGNAME = 'ZFSB'
 
 
@@ -126,7 +125,7 @@ def imrunning(fs):
     pids = []
     for i in psfaxu.stdout.split('\n'):
         #print(i)
-        if '/usr/bin/python3' in i and 'zfsbackup.py' in i and fs in i:
+        if '/usr/bin/python3' in i and 'zfsbackup' in i and fs in i:
             pids.append(i.strip(' ').split(' ')[0])
     if len(pids) > 1:
         log.info(f'Looft bereits! pids: {pids}')
@@ -185,7 +184,7 @@ class zfs_fs(object):
         if a > 1 and 'ONLINE' in ergeb[1:]:
             pass
         else:
-            print('Pool ist nicht vorhanden!')
+            print(f'Pool {self.pool} ist nicht vorhanden!')
             exit(1)
     def __check_pool_has_encryption(self):
         ''' Kann der Pool überhaupt encryption? '''
@@ -369,37 +368,112 @@ class zfs_fs(object):
     
     
     
-
-class zfs_back(object):
+class zfsbackup(object):
     '''
-    Hier findet als der reine Backupablauf seinen Platz
+    Die Vorbereitungen von für den Ablauf der einzelnen Backup-Vorgänge.
     '''
-    def __init__(self,):
-        '''
-        src und dst anlegen 
-        '''
+    
+    def __init__(self):
         self.parameters()
-        
+        self.logger.info(f'{APPNAME} - {VERSION}  **************************************** Start')
+        self.logger.debug(self.args)
+        if self.args.recursion:
+            # Dann als mit Rekursion und damit etwas anders Handling
+            self.fslist = []
+            if self.collect_fs(self.args.fromfs):
+                self.logger.debug(self.fslist)
+                for fs in self.fslist:
+                    # Erzeugen der entsprechenden FS-Paare und Übergabe an zfs_back
+                    tofs = self.gettofs(fromroot=self.args.fromfs,fromfs=fs,toroot=self.args.tofs)
+                    zfs_back(fromfs=fs, tofs=tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
+                             ,holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot)
+
+            else:
+                self.logger.info(f'Kein korrektes From-Filesystem übergeben! -> {self.args.fromfs}')
+                return
+            return
+        else:
+            zfs_back(fromfs=self.args.fromfs, tofs=self.args.tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
+                     , holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot) 
+    
+    def gettofs(self,fromroot,fromfs,toroot):
+        ''' Ermittelt daraus den korrekten Zielnamen '''
+        lenf = len(fromroot)
+        fs = fromfs[lenf:]
+        if len(fs) > 0:
+            tofs = toroot+'/'+fs[1:]
+        else:
+            tofs = toroot
+        return tofs
+    
+    def collect_fs(self,fs):
+        ''' Sammelt die FS '''
+        arg = shlex.split('zfs list -H -r '+fs)
+        liste = subprocess.run(arg,stdout=subprocess.PIPE,universal_newlines=True)
+        liste.check_returncode()
+        for i in liste.stdout.split('\n')[:-1]:
+            temp_fs = i.split('\t')[0]
+            self.fslist.append(temp_fs)
+        if len(self.fslist) > 0:
+            return True
+        else:
+            return False
+
+    def parameters(self):
+        ''' Paramter einlesen und Logger anlegen '''
+        parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        # Source Filesystem welches gesichert werden soll
+        parser.add_argument("-f","--from",dest='fromfs',
+            help='Übergabe des ZFS-Filesystems welches gesichert werden soll')
+        # Destination-FS
+        parser.add_argument("-t","--to",dest='tofs',required=True,
+            help='Übergabe des ZFS-Filesystems auf welches gesichert werden soll')
+        # Destination per ssh zu erreichen?
+        parser.add_argument("-s","--sshdest",dest='sshdest',
+            help='Übergabe des per ssh zu erreichenden Destination-Rechners')
+        parser.add_argument('-d',dest="debugging",help='Debug-Level-Ausgaben',default=False,action='store_true')
+        # Prefix für die snapshots - Default: zfsnappy
+        parser.add_argument('-p','--prefix',dest='prefix',help='Der Prefix für die Bezeichnungen der Snapshots',default='zfsnappy')
+        parser.add_argument('--holdtag',dest='holdtag',help='Die Bezeichnung des tags für den Hold-Status',default='keep')
+        parser.add_argument('-x','--no_snapshot',dest='nosnapshot',help='Verwenden, wenn kein neuer Snapshot erstellt werden soll',default=False,action='store_true')
+        parser.add_argument('-r','--recursion',dest='recursion',help='Alle Sub-Filesysteme sollen auch übertragen werden',default=False,action='store_true')
+        self.args = parser.parse_args()
+        self.logger = logging.getLogger(LOGNAME)
+        if self.args.debugging:
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.INFO)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         
         fh = logging.StreamHandler()
         fh.setFormatter(formatter)
         self.logger.addHandler(fh)
-        self.logger.info(f'{APPNAME} - {VERSION}  ************************** Start')
-        self.logger.debug(self.args)
-        if imrunning(self.args.fromfs):
-            self.logger.info(f'{APPNAME} - {VERSION}  ************************** Stop')
-            exit()
-        self.PREFIX = self.args.prefix
-        if self.args.sshdest != None:
-            sshcmdwithoutsudo = 'ssh -T '+self.args.sshdest+' '
+        
+
+class zfs_back(object):
+    '''
+    Hier findet als der reine Backupablauf seinen Platz
+    '''
+    def __init__(self,fromfs,tofs,prefix,sshdest,holdtag,nosnapshot):
+        '''
+        src und dst anlegen 
+        '''
+        
+        self.logger = logging.getLogger(LOGNAME)
+        self.logger.info(f'Backup von {fromfs} nach {tofs} startet.')
+        if imrunning(fromfs):
+            self.logger.info(f'zfsbackup läuft für {fromfs} bereits.')
+            return
+        self.PREFIX = prefix
+        if sshdest != None:
+            sshcmdwithoutsudo = 'ssh -T '+sshdest+' '
             sshcmdsudo = sshcmdwithoutsudo +'sudo '
         else:
             sshcmdsudo = ''
             sshcmdwithoutsudo = ''
-        self.logger.debug(f'{self.args.tofs} - {sshcmdwithoutsudo} - {sshcmdsudo}')
-        self.src = zfs_fs(self.args.fromfs,self.PREFIX,holdtag=self.args.holdtag)
-        self.dst = zfs_fs(self.args.tofs,self.PREFIX,connectionsudo=sshcmdsudo,connection=sshcmdwithoutsudo,holdtag=self.args.holdtag)
+        self.logger.debug(f'{tofs} - {sshcmdwithoutsudo} - {sshcmdsudo}')
+        self.src = zfs_fs(fromfs,self.PREFIX,holdtag = holdtag)
+        self.dst = zfs_fs(tofs,self.PREFIX,connectionsudo=sshcmdsudo,connection=sshcmdwithoutsudo,holdtag=holdtag)
         
         
         self.logger.debug(f'SRC: {self.src.fs} exist: {self.src.dataset_exist} encryption: {self.src.has_encryption} pool_encryption: {self.src.pool_has_encryption}')
@@ -424,17 +498,17 @@ class zfs_back(object):
             # es gibt also keinen identischen Snapshot -> Damit Versuch neuen Snapshot zu senden und fs zu senden
             if self.dst.dataset_exist:
                 self.logger.error(f'Das Zieldataset existiert bereits und es gbt keinen identischen Snapshot')
-                exit(1)
+                return
             if self.src.has_encryption and self.dst.pool_has_encryption == False:
                 self.logger.error('Das Source-Dataset hat encryption aktiv, aber der Zielpool nicht!')
-                exit(1)
-            if self.args.nosnapshot:
+                return
+            if nosnapshot:
                 newsnap = self.src.lastsnap
             else:
                 newsnap = self.src.takenextsnap()
             if newsnap == None:
                 self.logger.error('Kein Snapshot zum Senden vorhanden!')
-                exit(1)
+                return
             self.src.hold_snap(newsnap)
             if self.src.has_encryption:
                 # add w to command
@@ -446,18 +520,18 @@ class zfs_back(object):
             subrunPIPE(cmdfrom,cmdto)
             
             self.src.clear_holdsnaps((newsnap,))
-            self.dst_hold_update()
+            self.dst_hold_update(newsnap)
             return
         
         else:
             # es gibt also einen gemeinsamen Snapshot - neuen Snapshot erstellen und inkrementell senden
-            if self.args.nosnapshot:
+            if nosnapshot:
                 newsnap = self.src.lastsnap
             else:
                 newsnap = self.src.takenextsnap()
             if newsnap == None:
                 self.logger.error('Kein Snapshot zum Senden vorhanden!')
-                exit(1)
+                return
             oldsnap = self.src.fs+'@'+self.PREFIX+'_'+lastmatch
             if oldsnap == newsnap:
                 self.logger.info(f"Keine neuen Snapshots zu übertragen. {newsnap} ist bereits am Ziel vorhanden")
@@ -479,28 +553,7 @@ class zfs_back(object):
         a = snapshotname.split('@')
         return a[1]
     
-    def parameters(self):
-        parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-        # Source Filesystem welches gesichert werden soll
-        parser.add_argument("-f","--from",dest='fromfs',
-            help='Übergabe des ZFS-Filesystems welches gesichert werden soll')
-        # Destination-FS
-        parser.add_argument("-t","--to",dest='tofs',required=True,
-            help='Übergabe des ZFS-Filesystems auf welches gesichert werden soll')
-        # Destination per ssh zu erreichen?
-        parser.add_argument("-s","--sshdest",dest='sshdest',
-            help='Übergabe des per ssh zu erreichenden Destination-Rechners')
-        parser.add_argument('-d',dest="debugging",help='Debug-Level-Ausgaben',default=False,action='store_true')
-        # Prefix für die snapshots - Default: zfsnappy
-        parser.add_argument('-p','--prefix',dest='prefix',help='Der Prefix für die Bezeichnungen der Snapshots',default='zfsnappy')
-        parser.add_argument('--holdtag',dest='holdtag',help='Die Bezeichnung des tags für den Hold-Status',default='keep')
-        parser.add_argument('-x','--no_snapshot',dest='nosnapshot',help='Verwenden, wenn kein neuer Snapshot erstellt werden soll',default=False,action='store_true')
-        self.args = parser.parse_args()
-        self.logger = logging.getLogger(LOGNAME)
-        if self.args.debugging:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
+    
         
     def get_lastmatch(self):
         ''' Sucht den letzten identischen Snapshot '''
@@ -532,6 +585,6 @@ class zfs_back(object):
    
 if __name__ == '__main__':
     
-    zfs = zfs_back()
-    zfs.logger.info(f'{APPNAME} - {VERSION}  ************************** Stop')
+    zfs = zfsbackup()
+    zfs.logger.info(f'{APPNAME} - {VERSION}  *************************************** Stop')
         
