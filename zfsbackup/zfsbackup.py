@@ -6,7 +6,7 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
-2021.13 2021-08-07 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots 
+2021.14 2021-08-08 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots 
                      Initoptions für target -o compression=lzr und -o rdonly=on
                      -r für rekursive Ausführung - vs.
 2021-04-10 - Info zum Ziel des Backup in log.info aufgenommen - vs.
@@ -66,7 +66,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.13 - 2021-08-08'
+VERSION='2021.14 - 2021-08-08'
 LOGNAME = 'ZFSB'
 
 
@@ -579,8 +579,8 @@ class zfs_back(object):
         time.sleep(30) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
         self.logger.debug(f'Dieser Snap im dst wird auf Hold gesetzt: {self.dst.lastsnap}')
-        self.dst.hold_snap(newsnap)
-        self.dst.clear_holdsnaps((newsnap,))
+        self.dst.hold_snap(self.dst.lastsnap)
+        self.dst.clear_holdsnaps((self.dst.lastsnap,))
             
    
 if __name__ == '__main__':
