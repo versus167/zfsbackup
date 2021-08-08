@@ -6,7 +6,10 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
-2021-08-05 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots - vs.
+geplant -r -für rekursive Ausführung
+
+2021-08-07 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots 
+             Initoptions für target -o compression=lzr und -o rdonly=on- vs.
 2021-04-10 - Info zum Ziel des Backup in log.info aufgenommen - vs.
 2021-01-25 - fix typo, entferne argcomplete - vs.
 2021-01-23 - sudo auf Destination etwas feiner abgestimmt - vs.
@@ -64,7 +67,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.12.1 - 2021-08-05'
+VERSION='2021.12.3 - 2021-08-08'
 LOGNAME = 'ZFSB'
 
 
@@ -256,7 +259,7 @@ class zfs_fs(object):
             return None
     def get_lastsnap(self):
         if len(self.snaplist) == 0:
-            return ''
+            return None
         return self.fs+'@'+self.PREFIX+'_'+self.snaplist[-1]
         
 
@@ -309,15 +312,15 @@ class zfs_fs(object):
     
     def hold_snap(self,snapshotname):
         ''' Setzt den übergeben Snapshot auf Hold  - kompletter Name wird übergeben'''
-        self.logger.debug(snapshotname)
+
         if self.is_snap_hold(snapshotname):
             self.logger.debug(f'Snapshot ist bereits auf hold: {self.connection} {snapshotname}')
             return
-        cmd = self.connectionsudo+' zfs hold '+self.holdtag+' '+snapshotname
+        cmd = self.connectionsudo+' zfs hold '+self.holdtag+' '+snapshotname # 
         subrun(cmd)
-    def is_snap_hold(snapshotname):
+    def is_snap_hold(self,snapshotname):
         ''' Return true, wenn schon auf hold '''
-        cmd = 'zfs holds -H '+snapshotname
+        cmd = self.connection+' zfs holds -H '+snapshotname
         ret = subrun(cmd,capture_output=True,text=True)
         erg = ret.stdout.split('\n')
         for i in erg:
@@ -375,27 +378,8 @@ class zfs_back(object):
         '''
         src und dst anlegen 
         '''
-        parser = argparse.ArgumentParser()
-        # Source Filesystem welches gesichert werden soll
-        parser.add_argument("-f","--from",dest='fromfs',
-            help='Übergabe des ZFS-Filesystems welches gesichert werden soll')
-        # Destination-FS
-        parser.add_argument("-t","--to",dest='tofs',required=True,
-            help='Übergabe des ZFS-Filesystems auf welches gesichert werden soll')
-        # Destination per ssh zu erreichen?
-        parser.add_argument("-s","--sshdest",dest='sshdest',
-            help='Übergabe des per ssh zu erreichenden Destination-Rechners')
-        parser.add_argument('-d',dest="debugging",help='Debug-Level-Ausgaben',default=False,action='store_true')
-        # Prefix für die snapshots - Default: zfsnappy
-        parser.add_argument('-p','--prefix',dest='prefix',help='Der Prefix für die Bezeichnungen der Snapshots',default='zfsnappy')
-        parser.add_argument('--holdtag',dest='holdtag',help='Die Bezeichnung des tags für den Hold-Status',default='keep')
-        parser.add_argument('-x','--no_snapshot',dest='nosnapshot',help='Verwenden, wenn kein neuer Snapshot erstellt werden soll',default=False,action='store_true')
-        self.args = parser.parse_args()
-        self.logger = logging.getLogger(LOGNAME)
-        if self.args.debugging:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
+        self.parameters()
+        
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         
         fh = logging.StreamHandler()
@@ -444,10 +428,13 @@ class zfs_back(object):
             if self.src.has_encryption and self.dst.pool_has_encryption == False:
                 self.logger.error('Das Source-Dataset hat encryption aktiv, aber der Zielpool nicht!')
                 exit(1)
-            if self.arg.nosnapshot:
+            if self.args.nosnapshot:
                 newsnap = self.src.lastsnap
             else:
                 newsnap = self.src.takenextsnap()
+            if newsnap == None:
+                self.logger.error('Kein Snapshot zum Senden vorhanden!')
+                exit(1)
             self.src.hold_snap(newsnap)
             if self.src.has_encryption:
                 # add w to command
@@ -455,7 +442,7 @@ class zfs_back(object):
             else:
                 addcmd = ''
             cmdfrom = f'zfs send {addcmd} {newsnap}' # -v mal weggelassen
-            cmdto = sshcmdsudo+'zfs receive -vs '+self.dst.fs
+            cmdto = sshcmdsudo+'zfs receive -vs -o compression=lz4 -o rdonly=on '+self.dst.fs # neues Filesystem am Ziel erstellen
             subrunPIPE(cmdfrom,cmdto)
             
             self.src.clear_holdsnaps((newsnap,))
@@ -468,6 +455,9 @@ class zfs_back(object):
                 newsnap = self.src.lastsnap
             else:
                 newsnap = self.src.takenextsnap()
+            if newsnap == None:
+                self.logger.error('Kein Snapshot zum Senden vorhanden!')
+                exit(1)
             oldsnap = self.src.fs+'@'+self.PREFIX+'_'+lastmatch
             if oldsnap == newsnap:
                 self.logger.info(f"Keine neuen Snapshots zu übertragen. {newsnap} ist bereits am Ziel vorhanden")
@@ -482,9 +472,35 @@ class zfs_back(object):
             cmdto =  sshcmdsudo+'zfs receive -vFs '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
             self.src.clear_holdsnaps((oldsnap,newsnap))
-            self.dst_hold_update()
+            self.dst_hold_update(self.dst.fs+'@'+self.get_snapname(newsnap))
             return
-
+        
+    def get_snapname(self,snapshotname):
+        a = snapshotname.split('@')
+        return a[1]
+    
+    def parameters(self):
+        parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        # Source Filesystem welches gesichert werden soll
+        parser.add_argument("-f","--from",dest='fromfs',
+            help='Übergabe des ZFS-Filesystems welches gesichert werden soll')
+        # Destination-FS
+        parser.add_argument("-t","--to",dest='tofs',required=True,
+            help='Übergabe des ZFS-Filesystems auf welches gesichert werden soll')
+        # Destination per ssh zu erreichen?
+        parser.add_argument("-s","--sshdest",dest='sshdest',
+            help='Übergabe des per ssh zu erreichenden Destination-Rechners')
+        parser.add_argument('-d',dest="debugging",help='Debug-Level-Ausgaben',default=False,action='store_true')
+        # Prefix für die snapshots - Default: zfsnappy
+        parser.add_argument('-p','--prefix',dest='prefix',help='Der Prefix für die Bezeichnungen der Snapshots',default='zfsnappy')
+        parser.add_argument('--holdtag',dest='holdtag',help='Die Bezeichnung des tags für den Hold-Status',default='keep')
+        parser.add_argument('-x','--no_snapshot',dest='nosnapshot',help='Verwenden, wenn kein neuer Snapshot erstellt werden soll',default=False,action='store_true')
+        self.args = parser.parse_args()
+        self.logger = logging.getLogger(LOGNAME)
+        if self.args.debugging:
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.INFO)
         
     def get_lastmatch(self):
         ''' Sucht den letzten identischen Snapshot '''
@@ -503,15 +519,15 @@ class zfs_back(object):
         cmdfrom = f'zfs send -{addcmd}vt {token}'
         cmdto = self.dst.connectionsudo+' zfs receive -Fvs '+self.dst.fs
         subrunPIPE(cmdfrom, cmdto)
-    def dst_hold_update(self):
+    def dst_hold_update(self,newsnap):
         ''' setzt den letzten (aktuellsten) Snap auf Hold und released die anderen '''
         # Dann erstmal eine kurze Pause - vlt. hilft das ZFS Luft zu holen und
         # alle Snaps aufzulisten
         time.sleep(30) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
         self.logger.debug(f'Dieser Snap im dst wird auf Hold gesetzt: {self.dst.lastsnap}')
-        self.dst.hold_snap(self.dst.lastsnap)
-        self.dst.clear_holdsnaps((self.dst.lastsnap,))
+        self.dst.hold_snap(newsnap)
+        self.dst.clear_holdsnaps((newsnap,))
             
    
 if __name__ == '__main__':
