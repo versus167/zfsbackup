@@ -10,6 +10,7 @@ todo:
 
 - Fehler auswerten
 - dst-hold-snap auf den tatsächlich übertragenen snap begrenzen -> bei resume ist der toname =
+- einiges an Durcheinander im zfs_back init beseitigen und in Funktionen auslagern 
 
 2021.15 2021-08-09 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots 
                      Initoptions für target -o compression=lzr und -o rdonly=on
@@ -112,6 +113,7 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
     ziel = subprocess.Popen(argsto, stdin=ps.stdout)
     vgl = ''
     cnt = 0
+    output = []
     for line in ps.stderr:
         cnt += 1
         test = line.split(' ')
@@ -119,11 +121,12 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
             if cnt > 30:
                 cnt = 0
                 log.info(line)
+                output.append(line)
         else:
             vgl = test[-1]
             log.info(line)
             #print(line,end='')
-            
+    return output        
 def imrunning(fs):
     log = logging.getLogger(LOGNAME)
     psfaxu = subrun('ps fax',stdout=subprocess.PIPE,universal_newlines=True)
@@ -525,7 +528,7 @@ class zfs_back(object):
             subrunPIPE(cmdfrom,cmdto)
             
             self.src.clear_holdsnaps((newsnap,))
-            self.dst_hold_update()
+            self.dst_hold_update(newsnap)
             return
         
         else:
@@ -551,7 +554,7 @@ class zfs_back(object):
             cmdto =  sshcmdsudo+'zfs receive -vFs '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
             self.src.clear_holdsnaps((oldsnap,newsnap))
-            self.dst_hold_update()
+            self.dst_hold_update(newsnap)
             return
         
     def get_snapname(self,snapshotname):
@@ -576,17 +579,28 @@ class zfs_back(object):
             addcmd = ''
         cmdfrom = f'zfs send -{addcmd}vt {token}'
         cmdto = self.dst.connectionsudo+' zfs receive -Fvs '+self.dst.fs
-        subrunPIPE(cmdfrom, cmdto)
-    def dst_hold_update(self):
+        output = subrunPIPE(cmdfrom, cmdto)
+    def dst_hold_update(self,fromsnap):
         ''' setzt den aktuell übertragenen Snap auf Hold und released die anderen '''
         # Dann erstmal eine kurze Pause - vlt. hilft das ZFS Luft zu holen und
         # alle Snaps aufzulisten
         time.sleep(30) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
         self.logger.debug(f'Dieser Snap im dst wird auf Hold gesetzt: {self.dst.lastsnap}')
-        self.dst.hold_snap(self.dst.lastsnap)
-        self.dst.clear_holdsnaps((self.dst.lastsnap,))
-            
+        destsnap = self.gettargetname(self.dst.fs, self.dst.fs,fromsnap)
+        self.dst.hold_snap(destsnap)
+        self.dst.clear_holdsnaps((destsnap,))
+    def gettargetname(self,toroot,fromroot,fromsnap):
+        
+        ''' Ermittelt daraus den korrekten Zielnamen des Snapshots'''
+        lenf = len(fromroot)
+        fs = fromsnap[lenf:]
+        if len(fs) > 0:
+            tosnap = toroot+'/'+fs[1:]
+        else:
+            tosnap = toroot
+        return tosnap
+                
    
 if __name__ == '__main__':
     
