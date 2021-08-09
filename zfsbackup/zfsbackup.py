@@ -12,6 +12,7 @@ todo:
 - dst-hold-snap auf den tatsächlich übertragenen snap begrenzen -> bei resume ist der "toname =" der snapshot
 - einiges an Durcheinander im zfs_back init beseitigen und in Funktionen auslagern 
 
+2021.16 2021-08-09 - das Hold-Handling etwas klarer gestaltet - vs.
 2021.15 2021-08-09 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots 
                      Initoptions für target -o compression=lzr und -o rdonly=on
                      -r für rekursive Ausführung - vs.
@@ -72,7 +73,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.15 - 2021-08-09'
+VERSION='2021.16 - 2021-08-09'
 LOGNAME = 'ZFSB'
 
 
@@ -102,7 +103,7 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
     '''
     args = shlex.split(cmdfrom)
     log = logging.getLogger(LOGNAME)
-    log.debug(' '.join(args))
+    log.info(' '.join(args))
     #ret = subprocess.run(command,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
     #print(ret.stdout)
     #if checkretcode: ret.check_returncode()
@@ -125,6 +126,7 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
         else:
             vgl = test[-1]
             log.info(line)
+            output.append(line)
             #print(line,end='')
     return output        
 def imrunning(fs):
@@ -395,14 +397,14 @@ class zfsbackup(object):
                     tofs = self.gettofs(fromroot=self.args.fromfs,fromfs=fs,toroot=self.args.tofs)
                     zfs_back(fromfs=fs, tofs=tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
                              ,holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot)
-
+                    
             else:
                 self.logger.info(f'Kein korrektes From-Filesystem übergeben! -> {self.args.fromfs}')
                 return
             return
         else:
             zfs_back(fromfs=self.args.fromfs, tofs=self.args.tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
-                     , holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot) 
+                     , holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot)#
     
     def gettofs(self,fromroot,fromfs,toroot):
         ''' Ermittelt daraus den korrekten Zielnamen '''
@@ -494,10 +496,8 @@ class zfs_back(object):
             token = None
         
         if token != None:
-            self.resume_transport(token)
-            # Send sollte erfolgreich gewesen sein -> Neuesten snap am Ziel auf Hold setzen
-            self.dst_hold_update()
-            return
+            return self.resume_transport(token)
+
         
         # 2. Schritt -> Wie lautet der neueste identische Snapshot?
         lastmatch = self.get_lastmatch()
@@ -580,25 +580,33 @@ class zfs_back(object):
         cmdfrom = f'zfs send -{addcmd}vt {token}'
         cmdto = self.dst.connectionsudo+' zfs receive -Fvs '+self.dst.fs
         output = subrunPIPE(cmdfrom, cmdto)
+        fromsnapshot = None
+        for i in output:
+            j = i.split()
+            self.logger.debug(j)
+            if j[0] == "toname" and j[1] == '=':
+                fromsnapshot = j[2]
+        if fromsnapshot == None:
+            self.logger.error('Das Resume scheint nicht gelungen...')
+            return
+        self.dst_hold_update(fromsnapshot)
+        self.src.clear_holdsnaps((fromsnapshot,)) # alle aus den fromsnapshot releasen
+        
     def dst_hold_update(self,fromsnap):
         ''' setzt den aktuell übertragenen Snap auf Hold und released die anderen '''
         # Dann erstmal eine kurze Pause - vlt. hilft das ZFS Luft zu holen und
-        # alle Snaps aufzulisten
+        # alle Snaps aufzulisten ab 2.x kann man das dann über WAIT lösen
         time.sleep(30) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
         self.logger.debug(f'Dieser Snap im dst wird auf Hold gesetzt: {self.dst.lastsnap}')
-        destsnap = self.gettargetname(self.dst.fs, self.dst.fs,fromsnap)
+        destsnap = self.gettargetname(tofs=self.dst.fs,fromsnap=fromsnap)
         self.dst.hold_snap(destsnap)
         self.dst.clear_holdsnaps((destsnap,))
-    def gettargetname(self,toroot,fromroot,fromsnap):
+    def gettargetname(self,tofs,fromsnap):
         
         ''' Ermittelt daraus den korrekten Zielnamen des Snapshots'''
-        lenf = len(fromroot)
-        fs = fromsnap[lenf:]
-        if len(fs) > 0:
-            tosnap = toroot+'/'+fs[1:]
-        else:
-            tosnap = toroot
+        s1,s2 = fromsnap.split('@')
+        tosnap = tofs+'@'+s2 
         return tosnap
                 
    
