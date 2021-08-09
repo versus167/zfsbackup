@@ -6,7 +6,7 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
-2021.14 2021-08-08 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots 
+2021.15 2021-08-09 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots 
                      Initoptions für target -o compression=lzr und -o rdonly=on
                      -r für rekursive Ausführung - vs.
 2021-04-10 - Info zum Ziel des Backup in log.info aufgenommen - vs.
@@ -66,7 +66,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.14 - 2021-08-08'
+VERSION='2021.15 - 2021-08-09'
 LOGNAME = 'ZFSB'
 
 
@@ -79,7 +79,7 @@ def zeit():
     return time.strftime("%Y-%m-%d %H:%M:%S")
 def subrun(command,checkretcode=True,**kwargs):
     '''
-    Führt die übergeben Kommandozeile aus und gibt das Ergebnis
+    Führt die übergebene Kommandozeile aus und gibt das Ergebnis
     zurück
     '''
     log = logging.getLogger(LOGNAME)
@@ -520,7 +520,7 @@ class zfs_back(object):
             subrunPIPE(cmdfrom,cmdto)
             
             self.src.clear_holdsnaps((newsnap,))
-            self.dst_hold_update(newsnap)
+            self.dst_hold_update()
             return
         
         else:
@@ -546,7 +546,7 @@ class zfs_back(object):
             cmdto =  sshcmdsudo+'zfs receive -vFs '+self.dst.fs
             subrunPIPE(cmdfrom,cmdto)
             self.src.clear_holdsnaps((oldsnap,newsnap))
-            self.dst_hold_update(self.dst.fs+'@'+self.get_snapname(newsnap))
+            self.dst_hold_update()
             return
         
     def get_snapname(self,snapshotname):
@@ -572,7 +572,7 @@ class zfs_back(object):
         cmdfrom = f'zfs send -{addcmd}vt {token}'
         cmdto = self.dst.connectionsudo+' zfs receive -Fvs '+self.dst.fs
         subrunPIPE(cmdfrom, cmdto)
-    def dst_hold_update(self,newsnap):
+    def dst_hold_update(self):
         ''' setzt den letzten (aktuellsten) Snap auf Hold und released die anderen '''
         # Dann erstmal eine kurze Pause - vlt. hilft das ZFS Luft zu holen und
         # alle Snaps aufzulisten
