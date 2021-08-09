@@ -9,7 +9,7 @@ Created on 28.06.2018
 todo:
 
 - Fehler auswerten
-- dst-hold-snap auf den tatsächlich übertragenen snap begrenzen -> bei resume ist der toname =
+- dst-hold-snap auf den tatsächlich übertragenen snap begrenzen -> bei resume ist der "toname =" der snapshot
 - einiges an Durcheinander im zfs_back init beseitigen und in Funktionen auslagern 
 
 2021.15 2021-08-09 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots 
