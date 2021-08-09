@@ -6,6 +6,11 @@ Created on 28.06.2018
 
 @author: Volker Süß
 
+todo:
+
+- Fehler auswerten
+- dst-hold-snap auf den tatsächlich übertragenen snap begrenzen -> bei resume ist der toname =
+
 2021.15 2021-08-09 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots 
                      Initoptions für target -o compression=lzr und -o rdonly=on
                      -r für rekursive Ausführung - vs.
@@ -573,7 +578,7 @@ class zfs_back(object):
         cmdto = self.dst.connectionsudo+' zfs receive -Fvs '+self.dst.fs
         subrunPIPE(cmdfrom, cmdto)
     def dst_hold_update(self):
-        ''' setzt den letzten (aktuellsten) Snap auf Hold und released die anderen '''
+        ''' setzt den aktuell übertragenen Snap auf Hold und released die anderen '''
         # Dann erstmal eine kurze Pause - vlt. hilft das ZFS Luft zu holen und
         # alle Snaps aufzulisten
         time.sleep(30) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
