@@ -330,7 +330,7 @@ class zfs_fs(object):
     def is_snap_hold(self,snapshotname):
         ''' Return true, wenn schon auf hold '''
         cmd = self.connection+' zfs holds -H '+snapshotname
-        ret = subrun(cmd,capture_output=True,text=True)
+        ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True)
         erg = ret.stdout.split('\n')
         for i in erg:
             t1 = i.split('\t')
@@ -388,7 +388,7 @@ class zfsbackup(object):
         self.logger.info(f'{APPNAME} - {VERSION}  **************************************** Start')
         self.logger.debug(self.args)
         if self.args.recursion:
-            # Dann als mit Rekursion und damit etwas anders Handling
+            # Dann also mit Rekursion und damit etwas anderes Handling
             self.fslist = []
             if self.collect_fs(self.args.fromfs):
                 self.logger.debug(self.fslist)
@@ -595,7 +595,7 @@ class zfs_back(object):
     def dst_hold_update(self,fromsnap):
         ''' setzt den aktuell übertragenen Snap auf Hold und released die anderen '''
         # Dann erstmal eine kurze Pause - vlt. hilft das ZFS Luft zu holen und
-        # alle Snaps aufzulisten ab 2.x kann man das dann über WAIT lösen
+        # alle Snaps aufzulisten ab zfs 2.x kann man das dann über WAIT lösen
         time.sleep(30) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
         self.logger.debug(f'Dieser Snap im dst wird auf Hold gesetzt: {self.dst.lastsnap}')
@@ -611,7 +611,7 @@ class zfs_back(object):
                 
    
 if __name__ == '__main__':
-    
+    assert sys.version_info >= (3,5)
     zfs = zfsbackup()
     zfs.logger.info(f'{APPNAME} - {VERSION}  *************************************** Stop')
         
