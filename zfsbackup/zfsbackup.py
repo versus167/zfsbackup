@@ -10,7 +10,7 @@ todo:
 
 - Fehler auswerten
 
-2021.18 2021-08-20 - Check encryption für fs berichtigt - vs.
+2021.18.1 2021-08-20 - Check encryption für fs berichtigt - vs.
 2021.17 2021-08-15 - Anpassung an python 3.5 - vs.
 2021.16 2021-08-09 - das Hold-Handling etwas klarer gestaltet - vs.
 2021.15 2021-08-09 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots 
@@ -73,7 +73,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.18 - 2021-08-20'
+VERSION='2021.18.1 - 2021-08-20'
 LOGNAME = 'ZFSB'
 
 
@@ -162,11 +162,15 @@ class zfs_fs(object):
         self.__check_pool_exist()
         self.__check_pool_has_encryption()
         self.__check_dataset_exists()
-        self.__check_encryption_fs()
-        if self.dataset_exist == False:
-            self.__snaplist = []
-        else:
+        if self.dataset_exist:
+            self.__check_encryption_fs()
             self.updatesnaplist() # Snaplist ohne Prefix sammeln
+        else:
+            self.__has_encryption = False
+            self.__snaplist = []
+        
+       
+            
         pass
 
     def get_pool_has_encryption(self):
@@ -218,7 +222,10 @@ class zfs_fs(object):
             self.__has_encryption = False
             return
         cmd = self.connection +' zfs get -H encryption '+self.fs
-        ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True,checkretcode=True)
+        try:
+            ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True,checkretcode=True)
+        except:
+            self.__has_encryption = False
         #print(ret.stdout)
         ergeb = ret.stdout.split('\t')
         if ergeb[2] == 'off':
