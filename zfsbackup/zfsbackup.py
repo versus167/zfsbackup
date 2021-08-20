@@ -10,6 +10,7 @@ todo:
 
 - Fehler auswerten
 
+2021.18 2021-08-20 - Check encryption für fs berichtigt - vs.
 2021.17 2021-08-15 - Anpassung an python 3.5 - vs.
 2021.16 2021-08-09 - das Hold-Handling etwas klarer gestaltet - vs.
 2021.15 2021-08-09 - neue Optionen nosnapshot und holdtag - und Verwendung utc für neue Snapshots 
@@ -72,7 +73,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.17 - 2021-08-15'
+VERSION='2021.18 - 2021-08-20'
 LOGNAME = 'ZFSB'
 
 
@@ -161,7 +162,7 @@ class zfs_fs(object):
         self.__check_pool_exist()
         self.__check_pool_has_encryption()
         self.__check_dataset_exists()
-        self.__check_encryption_feature()
+        self.__check_encryption_fs()
         if self.dataset_exist == False:
             self.__snaplist = []
         else:
@@ -211,20 +212,19 @@ class zfs_fs(object):
                 self.__pool_has_encryption = True
             else:
                 self.__pool_has_encryption = False
-    def __check_encryption_feature(self):
-        ''' Soll feststellen, ob das feature encryption active ist im fs ''' 
-        cmd = self.connection +' zpool get -H feature@encryption '+self.pool
+    def __check_encryption_fs(self):
+        ''' Soll feststellen, ob das feature encryption active ist im fs '''
+        if self.pool_has_encryption == False:
+            self.__has_encryption = False
+            return
+        cmd = self.connection +' zfs get -H encryption '+self.fs
         ret = subrun(cmd,stdout=subprocess.PIPE,universal_newlines=True,checkretcode=True)
         #print(ret.stdout)
         ergeb = ret.stdout.split('\t')
-        try:
-            a = len(ergeb[2])
-        except:
-            a = 0
-        if a > 1 and ergeb[2] == 'active':
-            self.__has_encryption = True
-        else:
+        if ergeb[2] == 'off':
             self.__has_encryption = False
+        else:
+            self.__has_encryption = True
     def __check_dataset_exists(self):
         ''' Soll feststellen, ob das dataset vorhanden ist im fs ''' 
         cmd = self.connection +' zfs list -H -d 1 -o name '+self.fs
