@@ -10,6 +10,7 @@ todo:
 
 - Fehler auswerten
 
+2021.19.1 2021-08-31 - Versuch ohne -F bei receive auszukommen
 2021.19 2021-08-20 - Check encryption für fs berichtigt - vs.
 2021.17 2021-08-15 - Anpassung an python 3.5 - vs.
 2021.16 2021-08-09 - das Hold-Handling etwas klarer gestaltet - vs.
@@ -557,7 +558,7 @@ class zfs_back(object):
             else:
                 addcmd = ''
             cmdfrom = f'zfs send {addcmd} -i {oldsnap} {newsnap}'
-            cmdto =  sshcmdsudo+'zfs receive -vFs '+self.dst.fs
+            cmdto =  sshcmdsudo+'zfs receive -vs '+self.dst.fs  # Versuch ohne -F vs. 2021/08/31
             subrunPIPE(cmdfrom,cmdto)
             self.src.clear_holdsnaps((oldsnap,newsnap))
             self.dst_hold_update(newsnap)
