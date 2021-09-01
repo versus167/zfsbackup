@@ -8,8 +8,7 @@ Created on 28.06.2018
 
 todo:
 
-- Fehler auswerten
-- im target -> - durch _ ersetzen 
+- Fehler auswerten 
 
 2021.19.2 2021-08-31 - Versuch ohne -F bei receive auszukommen
 2021.19 2021-08-20 - Check encryption für fs berichtigt - vs.
