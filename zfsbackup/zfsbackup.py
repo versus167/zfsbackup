@@ -10,7 +10,7 @@ todo:
 
 - Fehler auswerten
 
-2021.19.1 2021-08-31 - Versuch ohne -F bei receive auszukommen
+2021.19.2 2021-08-31 - Versuch ohne -F bei receive auszukommen
 2021.19 2021-08-20 - Check encryption für fs berichtigt - vs.
 2021.17 2021-08-15 - Anpassung an python 3.5 - vs.
 2021.16 2021-08-09 - das Hold-Handling etwas klarer gestaltet - vs.
@@ -51,7 +51,7 @@ Cmnd_Alias C_ZFS = \
   /sbin/zfs "", /sbin/zfs help *, \
   /sbin/zfs get, /sbin/zfs get *, \
   /sbin/zfs list, /sbin/zfs list *, \
-  /sbin/zfs receive, /sbin/zfs receive *, \
+  /sbin/zfs receive, /sbin/zfs receive *, \  # zfs receive -vs und zfs receive -vs -o compression=lz4 -o rdonly=on
   /sbin/zfs hold, /sbin/zfs hold *, \
   /sbin/zfs release, /sbin/zfs release *, \
   /sbin/zpool "", /sbin/zpool help *, \
@@ -74,7 +74,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.19 - 2021-08-20'
+VERSION='2021.19.2 - 2021-09-01'
 LOGNAME = 'ZFSB'
 
 
@@ -585,7 +585,7 @@ class zfs_back(object):
         else:
             addcmd = ''
         cmdfrom = f'zfs send -{addcmd}vt {token}'
-        cmdto = self.dst.connectionsudo+' zfs receive -Fvs '+self.dst.fs
+        cmdto = self.dst.connectionsudo+' zfs receive -vs '+self.dst.fs
         output = subrunPIPE(cmdfrom, cmdto)
         fromsnapshot = None
         for i in output:
