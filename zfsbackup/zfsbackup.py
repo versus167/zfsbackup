@@ -10,7 +10,7 @@ todo:
 
 - Fehler auswerten 
 
-2021.19.3 2021-09-02 - Empfänger wird auf zfsbackup_receiver für receive umgestellt - vs.
+2021.20 2021-09-02 - Empfänger wird auf zfsbackup_receiver für receive umgestellt - vs.
 2021.19 2021-08-20 - Check encryption für fs berichtigt - vs.
 2021.17 2021-08-15 - Anpassung an python 3.5 - vs.
 2021.16 2021-08-09 - das Hold-Handling etwas klarer gestaltet - vs.
@@ -39,31 +39,6 @@ die über snapshots vom Zugriff des Senderechners ausgeschlossen war.
 haben). Das wäre vlt. die Möglichkeit, das ganze doch noch zu nutzen. Wenn ich am Ziel weder FS noch snapshots 
 löschen kann, dann besteht eigentlich auch kein Risiko? 26/10/18
 
-Um zfs receive für den Sudoer freizuschalten ist in sudoers.d das file zfs so zu gestalten:
-
-## Allow read-only ZoL commands to be called through sudo
-## without a password. Remove the first '#' column to enable.
-##
-## CAUTION: Any syntax error introduced here will break sudo.
-##
-## Cmnd alias specification
-Cmnd_Alias C_ZFS = \
-  /sbin/zfs "", /sbin/zfs help *, \
-  /sbin/zfs get, /sbin/zfs get *, \
-  /sbin/zfs list, /sbin/zfs list *, \
-  /sbin/zfs receive, /sbin/zfs receive *, \  # zfs receive -vs und zfs receive -vs -o compression=lz4 -o rdonly=on
-  /sbin/zfs hold, /sbin/zfs hold *, \
-  /sbin/zfs release, /sbin/zfs release *, \
-  /sbin/zpool "", /sbin/zpool help *, \
-  /sbin/zpool iostat, /sbin/zpool iostat *, \
-  /sbin/zpool list, /sbin/zpool list *, \
-  /sbin/zpool get, /sbin/zpool get *, \
-  /sbin/zpool status, /sbin/zpool status *, \
-  /sbin/zpool upgrade, /sbin/zpool upgrade -v
-#
-## allow any user to use basic read-only ZFS commands
-ALL ALL = (root) NOPASSWD: C_ZFS
-zfs (END)
 
 Gleichzeitig sollte auf Source und Dest-System zfsnappy im Einsatz sein, da sonst keine Snapshots gelöscht werden
 
@@ -74,7 +49,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.19.3 - 2021-09-02'
+VERSION='2021.20 - 2021-09-02'
 LOGNAME = 'ZFSB'
 
 
