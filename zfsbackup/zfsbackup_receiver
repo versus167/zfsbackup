@@ -1,0 +1,11 @@
+## Allow zfsbackup_receiver called to sudo without a password
+## 
+##
+## CAUTION: Any syntax error introduced here will break sudo.
+##
+## Cmnd alias specification
+Cmnd_Alias C_ZFSBACKUP_RECEIVER = \
+  /usr/bin/zfsbackup_receiver receiver, /usr/bin/zfsbackup_receiver *
+
+## allow any user to use zfsbackup_receiver
+ALL ALL = (root) NOPASSWD: C_ZFSBACKUP_RECEIVER
