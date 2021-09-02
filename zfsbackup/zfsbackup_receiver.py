@@ -18,12 +18,15 @@ import re, sys, shlex, subprocess
 
 APPNAME='zfsbackup_receiver'
 VERSION='2021.0.1 - 2021-09-02'
-#re.fullmatch(r'^zfs receive -vs [^- ][^ ]*',"zfs receive -vs F-Fsdf/madklö")
 
 pass
 
 if __name__ == '__main__':
     assert sys.version_info >= (3,5)
-    cmdto = "zfs receive -vs vs2016/test"
-    argsto = shlex.split(cmdto)
-    ziel = subprocess.Popen(argsto, stdin=sys.stdin)
+    cmd = ' '.join(sys.argv[1:])
+    if re.fullmatch(r'^zfs receive -vs [^- ][^ ]*',cmd) == None:
+        if re.fullmatch(r'^zfs receive -vs -o compression=lz4 -o rdonly=on [^- ][^ ]*',cmd) == None:
+            print("Kommando nicht erlaubt: ",cmd)
+            exit(1)
+    args = shlex.split(cmd)
+    ziel = subprocess.run(args, stdin=sys.stdin)

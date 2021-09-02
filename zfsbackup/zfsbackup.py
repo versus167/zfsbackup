@@ -10,7 +10,7 @@ todo:
 
 - Fehler auswerten 
 
-2021.19.2 2021-08-31 - Versuch ohne -F bei receive auszukommen
+2021.19.3 2021-09-02 - Empfänger wird auf zfsbackup_receiver für receive umgestellt - vs.
 2021.19 2021-08-20 - Check encryption für fs berichtigt - vs.
 2021.17 2021-08-15 - Anpassung an python 3.5 - vs.
 2021.16 2021-08-09 - das Hold-Handling etwas klarer gestaltet - vs.
@@ -74,7 +74,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.19.2 - 2021-09-01'
+VERSION='2021.19.3 - 2021-09-02'
 LOGNAME = 'ZFSB'
 
 
@@ -531,7 +531,7 @@ class zfs_back(object):
             else:
                 addcmd = ''
             cmdfrom = f'zfs send {addcmd} {newsnap}' # -v mal weggelassen
-            cmdto = sshcmdsudo+'zfs receive -vs -o compression=lz4 -o rdonly=on '+self.dst.fs # neues Filesystem am Ziel erstellen
+            cmdto = sshcmdsudo+'zfsbackup_receiver zfs receive -vs -o compression=lz4 -o rdonly=on '+self.dst.fs # neues Filesystem am Ziel erstellen
             subrunPIPE(cmdfrom,cmdto)
             
             self.src.clear_holdsnaps((newsnap,))
@@ -558,7 +558,7 @@ class zfs_back(object):
             else:
                 addcmd = ''
             cmdfrom = f'zfs send {addcmd} -i {oldsnap} {newsnap}'
-            cmdto =  sshcmdsudo+'zfs receive -vs '+self.dst.fs  # Versuch ohne -F vs. 2021/08/31
+            cmdto =  sshcmdsudo+'zfsbackup_receiver zfs receive -vs '+self.dst.fs  # Versuch ohne -F vs. 2021/08/31
             subrunPIPE(cmdfrom,cmdto)
             self.src.clear_holdsnaps((oldsnap,newsnap))
             self.dst_hold_update(newsnap)
@@ -585,7 +585,7 @@ class zfs_back(object):
         else:
             addcmd = ''
         cmdfrom = f'zfs send -{addcmd}vt {token}'
-        cmdto = self.dst.connectionsudo+' zfs receive -vs '+self.dst.fs
+        cmdto = self.dst.connectionsudo+' zfsbackup_receiver zfs receive -vs '+self.dst.fs
         output = subrunPIPE(cmdfrom, cmdto)
         fromsnapshot = None
         for i in output:
