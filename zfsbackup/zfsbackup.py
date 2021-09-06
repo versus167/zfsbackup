@@ -10,7 +10,8 @@ todo:
 
 - Fehler auswerten 
 
-2021.20.1 2021-09-06 - Pause nochmal verlängert auf 120 Sekunden, um ZFS etwas Zeit zu geben - vs.
+
+2021.20.2 2021-09-06 - Pause nochmal verlängert auf 120 Sekunden, um ZFS etwas Zeit zu geben - jetzt mit ziel.wait() im subrunpipe - vs.
 2021.20 2021-09-02 - Empfänger wird auf zfsbackup_receiver für receive umgestellt - vs.
 2021.19 2021-08-20 - Check encryption für fs berichtigt - vs.
 2021.17 2021-08-15 - Anpassung an python 3.5 - vs.
@@ -50,7 +51,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.20.1 - 2021-09-06'
+VERSION='2021.20.2 - 2021-09-06'
 LOGNAME = 'ZFSB'
 
 
@@ -89,6 +90,7 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
     ps = subprocess.Popen(args, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
     argsto = shlex.split(cmdto)
     ziel = subprocess.Popen(argsto, stdin=ps.stdout)
+    ziel.wait()
     vgl = ''
     cnt = 0
     output = []
