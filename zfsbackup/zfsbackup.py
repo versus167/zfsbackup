@@ -10,6 +10,7 @@ todo:
 
 - Fehler auswerten 
 
+2021.20.1 2021-09-06 - Pause nochmal verlängert auf 120 Sekunden, um ZFS etwas Zeit zu geben - vs.
 2021.20 2021-09-02 - Empfänger wird auf zfsbackup_receiver für receive umgestellt - vs.
 2021.19 2021-08-20 - Check encryption für fs berichtigt - vs.
 2021.17 2021-08-15 - Anpassung an python 3.5 - vs.
@@ -49,7 +50,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.20 - 2021-09-02'
+VERSION='2021.20.1 - 2021-09-06'
 LOGNAME = 'ZFSB'
 
 
@@ -578,7 +579,7 @@ class zfs_back(object):
         ''' setzt den aktuell übertragenen Snap auf Hold und released die anderen '''
         # Dann erstmal eine kurze Pause - vlt. hilft das ZFS Luft zu holen und
         # alle Snaps aufzulisten ab zfs 2.x kann man das dann über WAIT lösen
-        time.sleep(30) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
+        time.sleep(120) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
         self.logger.debug(f'Dieser Snap im dst wird auf Hold gesetzt: {self.dst.lastsnap}')
         destsnap = self.gettargetname(tofs=self.dst.fs,fromsnap=fromsnap)
