@@ -1,10 +1,10 @@
 #!/bin/bash
 cp zfsbackup.py ./zfsbackup/usr/bin/zfsbackup
 chown root:root ./zfsbackup/usr/bin/zfsbackup
-chmod 0551 ./zfsbackup/usr/bin/zfsbackup
+chmod 0555 ./zfsbackup/usr/bin/zfsbackup
 cp zfsbackup_receiver.py ./zfsbackup/usr/bin/zfsbackup_receiver
 chown root:root ./zfsbackup/usr/bin/zfsbackup_receiver
-chmod 0551 ./zfsbackup/usr/bin/zfsbackup_receiver
+chmod 0555 ./zfsbackup/usr/bin/zfsbackup_receiver
 cp zfsbackup_receiver ./zfsbackup/etc/sudoers.d/zfsbackup_receiver
 chown root:root ./zfsbackup/etc/sudoers.d/zfsbackup_receiver
 chmod 0440 ./zfsbackup/etc/sudoers.d/zfsbackup_receiver
