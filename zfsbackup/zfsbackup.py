@@ -11,7 +11,7 @@ todo:
 - Fehler auswerten 
 
 
-2021.20.2 2021-09-06 - Pause nochmal verlängert auf 120 Sekunden, um ZFS etwas Zeit zu geben - jetzt mit ziel.wait() im subrunpipe - vs.
+2021.21 2021-09-06 - Statt Pause jetzt ziel.wait() im subrunpipe - vs.
 2021.20 2021-09-02 - Empfänger wird auf zfsbackup_receiver für receive umgestellt - vs.
 2021.19 2021-08-20 - Check encryption für fs berichtigt - vs.
 2021.17 2021-08-15 - Anpassung an python 3.5 - vs.
@@ -51,7 +51,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.20.2 - 2021-09-06'
+VERSION='2021.21 - 2021-09-06'
 LOGNAME = 'ZFSB'
 
 
@@ -82,15 +82,11 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
     args = shlex.split(cmdfrom)
     log = logging.getLogger(LOGNAME)
     log.info(' '.join(args))
-    #ret = subprocess.run(command,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-    #print(ret.stdout)
-    #if checkretcode: ret.check_returncode()
     argsto = shlex.split(cmdto)
     log.info(f'pipe to -> {" ".join(argsto)}')
     ps = subprocess.Popen(args, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
     argsto = shlex.split(cmdto)
-    ziel = subprocess.Popen(argsto, stdin=ps.stdout)
-    ziel.wait()
+    ziel = subprocess.Popen(argsto, stdin=ps.stdout)   
     vgl = ''
     cnt = 0
     output = []
@@ -106,7 +102,7 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
             vgl = test[-1]
             log.info(line)
             output.append(line)
-            #print(line,end='')
+    ziel.wait()        
     return output        
 def imrunning(fs):
     log = logging.getLogger(LOGNAME)
@@ -579,9 +575,6 @@ class zfs_back(object):
         
     def dst_hold_update(self,fromsnap):
         ''' setzt den aktuell übertragenen Snap auf Hold und released die anderen '''
-        # Dann erstmal eine kurze Pause - vlt. hilft das ZFS Luft zu holen und
-        # alle Snaps aufzulisten ab zfs 2.x kann man das dann über WAIT lösen
-        #time.sleep(120) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
         self.logger.debug(f'Dieser Snap im dst wird auf Hold gesetzt: {self.dst.lastsnap}')
         destsnap = self.gettargetname(tofs=self.dst.fs,fromsnap=fromsnap)
