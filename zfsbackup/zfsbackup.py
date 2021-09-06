@@ -581,7 +581,7 @@ class zfs_back(object):
         ''' setzt den aktuell übertragenen Snap auf Hold und released die anderen '''
         # Dann erstmal eine kurze Pause - vlt. hilft das ZFS Luft zu holen und
         # alle Snaps aufzulisten ab zfs 2.x kann man das dann über WAIT lösen
-        time.sleep(120) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
+        #time.sleep(120) # die Pause scheint manchmal recht lang nötig zu sein - wir haben ja keinen Zeitdruck
         self.dst.updatesnaplist() # neu aufbauen, da neuer Snap vorhanden
         self.logger.debug(f'Dieser Snap im dst wird auf Hold gesetzt: {self.dst.lastsnap}')
         destsnap = self.gettargetname(tofs=self.dst.fs,fromsnap=fromsnap)
