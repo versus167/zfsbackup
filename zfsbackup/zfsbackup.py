@@ -11,7 +11,7 @@ todo:
 - Fehler auswerten 
 
 
-2021.21.1 2021-09-09 - --raw bzw -w eingefügt - damit entscheidet der Aufruf ob raw gesendet wird oder nicht -vs
+2021.22 2021-09-09 - --raw bzw -w eingefügt - damit entscheidet der Aufruf ob raw gesendet wird oder nicht -vs
 2021.21 2021-09-06 - Statt Pause jetzt ziel.wait() im subrunpipe - vs.
 2021.20 2021-09-02 - Empfänger wird auf zfsbackup_receiver für receive umgestellt - vs.
 2021.19 2021-08-20 - Check encryption für fs berichtigt - vs.
@@ -39,7 +39,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.21.1 - 2021-09-09'
+VERSION='2021.22 - 2021-09-09'
 LOGNAME = 'ZFSB'
 
 
@@ -438,7 +438,7 @@ class zfs_back(object):
         '''
         src und dst anlegen 
         '''
-        sefl.raw = raw
+        self.raw = raw
         self.logger = logging.getLogger(LOGNAME)
         self.logger.info(f'Backup von {fromfs} nach {tofs} startet.')
         if imrunning(fromfs):
