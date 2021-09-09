@@ -9,6 +9,7 @@ Created on 28.06.2018
 todo:
 
 - Fehler auswerten 
+- w --raw als Option einbauen
 
 
 2021.21 2021-09-06 - Statt Pause jetzt ziel.wait() im subrunpipe - vs.
@@ -486,7 +487,7 @@ class zfs_back(object):
         if lastmatch == None:
             # es gibt also keinen identischen Snapshot -> Damit Versuch neuen Snapshot zu senden und fs zu senden
             if self.dst.dataset_exist:
-                self.logger.error(f'Das Zieldataset existiert bereits und es gbt keinen identischen Snapshot')
+                self.logger.error(f'Das Zieldataset existiert bereits und es gibt keinen identischen Snapshot')
                 return
             if self.src.has_encryption and self.dst.pool_has_encryption == False:
                 self.logger.error('Das Source-Dataset hat encryption aktiv, aber der Zielpool nicht!')
