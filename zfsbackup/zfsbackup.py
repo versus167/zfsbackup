@@ -428,6 +428,7 @@ class zfsbackup(object):
         parser.add_argument('--holdtag',dest='holdtag',help='Die Bezeichnung des tags für den Hold-Status',default='keep')
         parser.add_argument('-x','--no_snapshot',dest='nosnapshot',help='Verwenden, wenn kein neuer Snapshot erstellt werden soll',default=False,action='store_true')
         parser.add_argument('-r','--recursion',dest='recursion',help='Alle Sub-Filesysteme sollen auch übertragen werden',default=False,action='store_true')
+        parser.add_argument('-w','--raw',dest='raw',help='Send mit Option --raw für zfs send',default=False,action='store_true')
         self.args = parser.parse_args()
         self.logger = logging.getLogger(LOGNAME)
         if self.args.debugging:
