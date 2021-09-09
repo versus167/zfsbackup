@@ -9,9 +9,9 @@ Created on 28.06.2018
 todo:
 
 - Fehler auswerten 
-- w --raw als Option einbauen
 
 
+2021.21.1 2021-09-09 - --raw bzw -w eingefügt - damit entscheidet der Aufruf ob raw gesendet wird oder nicht -vs
 2021.21 2021-09-06 - Statt Pause jetzt ziel.wait() im subrunpipe - vs.
 2021.20 2021-09-02 - Empfänger wird auf zfsbackup_receiver für receive umgestellt - vs.
 2021.19 2021-08-20 - Check encryption für fs berichtigt - vs.
@@ -30,19 +30,6 @@ todo:
 2019-02-21 - Option prefix ergänzt - vs.
 2018-11-02 - Soweit sollte alles drin sein und einsatzfähig. Jetzt Praxistest - vs.
 
-
-Sieht aus als wäre das alles gar kein echtes Problem -> Ist es auch nicht.
-
-Das Problem liegt an einer anderen Stelle: zfs send/receive funzt nur als root. Damit fällt die 
-Abschirmung zwischen src- und dst-Filesystem weg, Über rsync ist die Sicherung eine oneway-Geschichte,
-
-die über snapshots vom Zugriff des Senderechners ausgeschlossen war. 
-
--> Man kann aber ja imho auch nur bestimmte Kommandos eines Befehls auf sudo machen lassen (ohne alle Rechte zu 
-haben). Das wäre vlt. die Möglichkeit, das ganze doch noch zu nutzen. Wenn ich am Ziel weder FS noch snapshots 
-löschen kann, dann besteht eigentlich auch kein Risiko? 26/10/18
-
-
 Gleichzeitig sollte auf Source und Dest-System zfsnappy im Einsatz sein, da sonst keine Snapshots gelöscht werden
 
 Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelöscht werden
@@ -52,7 +39,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.21 - 2021-09-06'
+VERSION='2021.21.1 - 2021-09-09'
 LOGNAME = 'ZFSB'
 
 
@@ -378,7 +365,7 @@ class zfsbackup(object):
                     # Erzeugen der entsprechenden FS-Paare und Übergabe an zfs_back
                     tofs = self.gettofs(fromroot=self.args.fromfs,fromfs=fs,toroot=self.args.tofs)
                     zfs_back(fromfs=fs, tofs=tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
-                             ,holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot)
+                             ,holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw)
                     
             else:
                 self.logger.info(f'Kein korrektes From-Filesystem übergeben! -> {self.args.fromfs}')
@@ -386,7 +373,7 @@ class zfsbackup(object):
             return
         else:
             zfs_back(fromfs=self.args.fromfs, tofs=self.args.tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
-                     , holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot)#
+                     , holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw)#
     
     def gettofs(self,fromroot,fromfs,toroot):
         ''' Ermittelt daraus den korrekten Zielnamen '''
@@ -447,11 +434,11 @@ class zfs_back(object):
     '''
     Hier findet als der reine Backupablauf seinen Platz
     '''
-    def __init__(self,fromfs,tofs,prefix,sshdest,holdtag,nosnapshot):
+    def __init__(self,fromfs,tofs,prefix,sshdest,holdtag,nosnapshot,raw):
         '''
         src und dst anlegen 
         '''
-        
+        sefl.raw = raw
         self.logger = logging.getLogger(LOGNAME)
         self.logger.info(f'Backup von {fromfs} nach {tofs} startet.')
         if imrunning(fromfs):
@@ -501,7 +488,7 @@ class zfs_back(object):
                 self.logger.error('Kein Snapshot zum Senden vorhanden!')
                 return
             self.src.hold_snap(newsnap)
-            if self.src.has_encryption:
+            if self.raw:
                 # add w to command
                 addcmd = '-w'
             else:
@@ -528,7 +515,7 @@ class zfs_back(object):
                 self.logger.info(f"Keine neuen Snapshots zu übertragen. {newsnap} ist bereits am Ziel vorhanden")
                 return
             self.src.hold_snap(newsnap)
-            if self.src.has_encryption:
+            if self.raw:
                 # add w to command
                 addcmd = '-w'
             else:
@@ -555,7 +542,7 @@ class zfs_back(object):
         return lastmatch
     def resume_transport(self,token):
         # Setzt den Transport fort 
-        if self.src.has_encryption:
+        if self.raw:
             # add w to command
             addcmd = 'w'
         else:
