@@ -92,17 +92,17 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
             output.append(line)
     ziel.wait()        
     return output        
-def imrunning(fs):
+def imrunning():
     log = logging.getLogger(LOGNAME)
     psfaxu = subrun('ps fax',stdout=subprocess.PIPE,universal_newlines=True)
-    vgl = " ".join(sys.argv)
+    vgl = '/usr/bin/python3'+' '+" ".join(sys.argv)
     pids = []
     for i in psfaxu.stdout.split('\n'):
         
         if vgl in i:
             log.debug(i)
             pids.append(i.strip(' ').split(' ')[0])
-    if len(pids) > 2:
+    if len(pids) > 1:
         log.info(f'Looft bereits! pids: {pids}')
         return True
 
@@ -359,7 +359,7 @@ class zfsbackup(object):
         self.parameters()
         self.logger.info(f'{APPNAME} - {VERSION}  **************************************** Start')
         self.logger.debug(self.args)
-        if imrunning(" ".join(sys.argv)):
+        if imrunning():
             return
         if self.args.recursion:
             # Dann also mit Rekursion und damit etwas anderes Handling
