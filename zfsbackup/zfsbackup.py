@@ -10,7 +10,7 @@ todo:
 
 - Fehler auswerten 
 
-
+2021.23 2021-09-23 - imrunning verbessert - vs.
 2021.22 2021-09-09 - --raw bzw -w eingefügt - damit entscheidet der Aufruf ob raw gesendet wird oder nicht -vs
 2021.21 2021-09-06 - Statt Pause jetzt ziel.wait() im subrunpipe - vs.
 2021.20 2021-09-02 - Empfänger wird auf zfsbackup_receiver für receive umgestellt - vs.
@@ -39,7 +39,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.22 - 2021-09-09'
+VERSION='2021.22.1 - 2021-09-23'
 LOGNAME = 'ZFSB'
 
 
@@ -95,12 +95,14 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
 def imrunning(fs):
     log = logging.getLogger(LOGNAME)
     psfaxu = subrun('ps fax',stdout=subprocess.PIPE,universal_newlines=True)
+    vgl = " ".join(sys.argv)
     pids = []
     for i in psfaxu.stdout.split('\n'):
-        #print(i)
-        if '/usr/bin/python3' in i and 'zfsbackup' in i and fs in i:
+        
+        if vgl in i:
+            log.debug(i)
             pids.append(i.strip(' ').split(' ')[0])
-    if len(pids) > 1:
+    if len(pids) > 2:
         log.info(f'Looft bereits! pids: {pids}')
         return True
 
@@ -353,9 +355,12 @@ class zfsbackup(object):
     '''
     
     def __init__(self):
+        
         self.parameters()
         self.logger.info(f'{APPNAME} - {VERSION}  **************************************** Start')
         self.logger.debug(self.args)
+        if imrunning(" ".join(sys.argv)):
+            return
         if self.args.recursion:
             # Dann also mit Rekursion und damit etwas anderes Handling
             self.fslist = []
@@ -441,9 +446,6 @@ class zfs_back(object):
         self.raw = raw
         self.logger = logging.getLogger(LOGNAME)
         self.logger.info(f'Backup von {fromfs} nach {tofs} startet.')
-        if imrunning(fromfs):
-            self.logger.info(f'zfsbackup läuft für {fromfs} bereits.')
-            return
         self.PREFIX = prefix
         if sshdest != None:
             sshcmdwithoutsudo = 'ssh -T '+sshdest+' '
