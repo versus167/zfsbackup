@@ -10,6 +10,7 @@ todo:
 
 - Fehler auswerten 
 
+2021.23.1 2021-10-23 - Versuch Abbrüche der Netzverbindung abzufangen... vs.
 2021.23 2021-09-23 - imrunning verbessert - vs.
 2021.22 2021-09-09 - --raw bzw -w eingefügt - damit entscheidet der Aufruf ob raw gesendet wird oder nicht -vs
 2021.21 2021-09-06 - Statt Pause jetzt ziel.wait() im subrunpipe - vs.
@@ -39,7 +40,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.23 - 2021-09-23'
+VERSION='2021.23.1 - 2021-10-23'
 LOGNAME = 'ZFSB'
 
 
@@ -79,6 +80,9 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
     cnt = 0
     output = []
     for line in ps.stderr:
+        if "closed by remote host" in line:
+            log.error("Abbruch der Verbindung -> Ende Script")
+            exit(1)
         cnt += 1
         test = line.split(' ')
         if test[-1] == vgl:
@@ -90,6 +94,7 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
             vgl = test[-1]
             log.info(line)
             output.append(line)
+
     ziel.wait()        
     return output        
 def imrunning():
