@@ -40,7 +40,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.23.1 - 2021-10-23'
+VERSION='2021.23.2 - 2021-10-25'
 LOGNAME = 'ZFSB'
 
 
@@ -80,7 +80,7 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
     cnt = 0
     output = []
     for line in ps.stderr:
-        if "closed by remote host" in line:
+        if "closed by remote host" in line or "send disconnect: Broken Pipe" in line:
             log.error("Abbruch der Verbindung -> Ende Script")
             exit(1)
         cnt += 1
