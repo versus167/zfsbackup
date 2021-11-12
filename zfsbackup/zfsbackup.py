@@ -10,7 +10,7 @@ todo:
 
 - Fehler auswerten 
 
-2021.23.1 2021-10-23 - Versuch Abbrüche der Netzverbindung abzufangen... vs.
+2021.23.3 2021-10-23 - Versuch Abbrüche der Netzverbindung abzufangen...zusätzlich -k Switch vs.
 2021.23 2021-09-23 - imrunning verbessert - vs.
 2021.22 2021-09-09 - --raw bzw -w eingefügt - damit entscheidet der Aufruf ob raw gesendet wird oder nicht -vs
 2021.21 2021-09-06 - Statt Pause jetzt ziel.wait() im subrunpipe - vs.
@@ -40,12 +40,12 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.23.2 - 2021-10-25'
+VERSION='2021.23.3 - 2021-11-12'
 LOGNAME = 'ZFSB'
 
 
 
-import subprocess,shlex, argparse
+import subprocess,shlex, argparse, os, signal
 import time,sys, datetime
 import logging
 
@@ -97,8 +97,10 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
 
     ziel.wait()        
     return output        
-def imrunning():
+def imrunning(kill):
     log = logging.getLogger(LOGNAME)
+    ownpid = os.getpid()
+    log.debug(f'Mein pid: {ownpid}')
     psfaxu = subrun('ps fax',stdout=subprocess.PIPE,universal_newlines=True)
     vgl = '/usr/bin/python3'+' '+" ".join(sys.argv)
     pids = []
@@ -106,8 +108,24 @@ def imrunning():
         
         if vgl in i:
             log.debug(i)
-            pids.append(i.strip(' ').split(' ')[0])
-    if len(pids) > 1:
+            pid = int(i.strip(' ').split(' ')[0])
+            if pid == ownpid:
+                continue
+            pids.append(pid)
+    
+    if len(pids) > 0 and kill:
+        for pid in pids:
+            pgid = os.getpgid(pid)
+            if pgid == 1:
+                os.kill(pid, signal.SIGTERM)
+                log.debug(f'kill {pid}')
+            else:
+                log.debug(f'killpg {pgid}')
+                os.killpg(pgid, signal.SIGTERM)
+                 
+            time.sleep(60)
+        return False
+    if len(pids) > 0:
         log.info(f'Looft bereits! pids: {pids}')
         return True
 
@@ -364,7 +382,7 @@ class zfsbackup(object):
         self.parameters()
         self.logger.info(f'{APPNAME} - {VERSION}  **************************************** Start')
         self.logger.debug(self.args)
-        if imrunning():
+        if imrunning(self.args.kill):
             return
         if self.args.recursion:
             # Dann also mit Rekursion und damit etwas anderes Handling
@@ -427,6 +445,7 @@ class zfsbackup(object):
         parser.add_argument('-x','--no_snapshot',dest='nosnapshot',help='Verwenden, wenn kein neuer Snapshot erstellt werden soll',default=False,action='store_true')
         parser.add_argument('-r','--recursion',dest='recursion',help='Alle Sub-Filesysteme sollen auch übertragen werden',default=False,action='store_true')
         parser.add_argument('-w','--raw',dest='raw',help='Send mit Option --raw für zfs send',default=False,action='store_true')
+        parser.add_argument('-k','--kill',dest='kill',help='Andere laufende Instanzen dieses Scripts, die mit den gleichen Aufrufparamtern gestartet wurden, werden gekillt.',default=False,action='store_true')
         self.args = parser.parse_args()
         self.logger = logging.getLogger(LOGNAME)
         if self.args.debugging:
