@@ -10,7 +10,7 @@ todo:
 
 - Fehler auswerten 
 
-2021.23.3 2021-10-23 - Versuch Abbrüche der Netzverbindung abzufangen...zusätzlich -k Switch vs.
+2021.24 2021-11-13 - Versuch Abbrüche der Netzverbindung abzufangen...zusätzlich --kill Switch vs.
 2021.23 2021-09-23 - imrunning verbessert - vs.
 2021.22 2021-09-09 - --raw bzw -w eingefügt - damit entscheidet der Aufruf ob raw gesendet wird oder nicht -vs
 2021.21 2021-09-06 - Statt Pause jetzt ziel.wait() im subrunpipe - vs.
@@ -40,7 +40,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2021.23.3 - 2021-11-12'
+VERSION='2021.24 - 2021-11-13'
 LOGNAME = 'ZFSB'
 
 
