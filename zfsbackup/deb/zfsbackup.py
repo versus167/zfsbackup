@@ -8,7 +8,9 @@ Created on 28.06.2018
 
 todo:
 
-- Fehler auswerten 
+- Fehler auswerten:
+    Abbrechen, wenn das send nicht angenommen werden kann - konkrete Meldung dazu sammeln
+
 
 2021.24 2021-11-13 - Versuch Abbrüche der Netzverbindung abzufangen...zusätzlich --kill Switch vs.
 2021.23 2021-09-23 - imrunning verbessert - vs.
