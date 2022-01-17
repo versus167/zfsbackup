@@ -10,8 +10,12 @@ todo:
 
 - Fehler auswerten:
     Abbrechen, wenn das send nicht angenommen werden kann - konkrete Meldung dazu sammeln
+    
+    - done-file touchen falls angegeben
+    - check done-file ob ausgeführt werden soll - nach range
 
 
+2022.25 2022       - done-file mit dem Versuch die Ausführung etwas verteilter zu gestalten - vs.
 2021.24 2021-11-13 - Versuch Abbrüche der Netzverbindung abzufangen...zusätzlich --kill Switch vs.
 2021.23 2021-09-23 - imrunning verbessert - vs.
 2021.22 2021-09-09 - --raw bzw -w eingefügt - damit entscheidet der Aufruf ob raw gesendet wird oder nicht -vs
@@ -448,6 +452,11 @@ class zfsbackup(object):
         parser.add_argument('-r','--recursion',dest='recursion',help='Alle Sub-Filesysteme sollen auch übertragen werden',default=False,action='store_true')
         parser.add_argument('-w','--raw',dest='raw',help='Send mit Option --raw für zfs send',default=False,action='store_true')
         parser.add_argument('-k','--kill',dest='kill',help='Andere laufende Instanzen dieses Scripts, die mit den gleichen Aufrufparamtern gestartet wurden, werden gekillt.',default=False,action='store_true')
+        parser.add_argument('--touch_file',dest='touch_file',help='Das File welches einen touch erhält bei erfolgreicher Ausführung.',default=None)
+        parser.add_argument('--mindays',dest='mindays',required='--touch_file' in sys.argv,help='Das Touchfile sollte mindestens diese Anzahl Tage alt sein, damit ein Backup gestartet wird',
+                            type=int,default=0)
+        parser.add_argument('--maxdays',dest='maxdays',required='--touch_file' in sys.argv,help='Falls randrange(mindays,maxdays <= Alter Touch-File in Tagen, dann backup',
+                            type=int,default=0)
         self.args = parser.parse_args()
         self.logger = logging.getLogger(LOGNAME)
         if self.args.debugging:
