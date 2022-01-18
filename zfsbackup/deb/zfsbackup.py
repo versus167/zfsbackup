@@ -15,7 +15,7 @@ todo:
     - check done-file ob ausgeführt werden soll - nach range
 
 
-2022.25 2022       - done-file mit dem Versuch die Ausführung etwas verteilter zu gestalten - vs.
+2022.25 2022       - --touch-file --mindays und --maxdays Versuch die Ausführung verteilter zu gestalten - vs.
 2021.24 2021-11-13 - Versuch Abbrüche der Netzverbindung abzufangen...zusätzlich --kill Switch vs.
 2021.23 2021-09-23 - imrunning verbessert - vs.
 2021.22 2021-09-09 - --raw bzw -w eingefügt - damit entscheidet der Aufruf ob raw gesendet wird oder nicht -vs
@@ -53,7 +53,8 @@ LOGNAME = 'ZFSB'
 
 import subprocess,shlex, argparse, os, signal
 import time,sys, datetime
-import logging
+import logging, random
+from pathlib import Path
 
 def zeit():
     return time.strftime("%Y-%m-%d %H:%M:%S")
@@ -104,6 +105,8 @@ def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
     ziel.wait()        
     return output        
 def imrunning(kill):
+    ''' Falls das Ding bereits läuft und nicht gekillt werden soll, dann return true und exit
+    '''
     log = logging.getLogger(LOGNAME)
     ownpid = os.getpid()
     log.debug(f'Mein pid: {ownpid}')
@@ -390,6 +393,12 @@ class zfsbackup(object):
         self.logger.debug(self.args)
         if imrunning(self.args.kill):
             return
+        
+        if self.touchfile_handling():
+            pass
+        else:
+            return
+        
         if self.args.recursion:
             # Dann also mit Rekursion und damit etwas anderes Handling
             self.fslist = []
@@ -404,11 +413,17 @@ class zfsbackup(object):
             else:
                 self.logger.info(f'Kein korrektes From-Filesystem übergeben! -> {self.args.fromfs}')
                 return
-            return
+            # return - wollen wir hier eigentlich nicht
         else:
             zfs_back(fromfs=self.args.fromfs, tofs=self.args.tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
                      , holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw)#
-    
+        # Wenn wir hier sind, dann war alles ok?!
+        if self.args.touch_file:
+            self.logger.debug(f"Now touch the file: {self.args.touch_file} aka {self.touchfile}")
+            Path(self.touchfile).touch()
+        
+        
+        
     def gettofs(self,fromroot,fromfs,toroot):
         ''' Ermittelt daraus den korrekten Zielnamen '''
         lenf = len(fromroot)
@@ -418,6 +433,53 @@ class zfsbackup(object):
         else:
             tofs = toroot
         return tofs
+    
+    def touchfile_handling(self):
+        ''' Gibt true zurück, wenn das touchfile-handling nichts gegenteiliges aussagt '''
+        if self.args.touch_file:
+            self.touchfile = os.path.expanduser(self.args.touch_file)
+            pass
+        else:
+            return True # Touchfile spricht nicht gegen Ausführung
+        
+        
+        # Check ob touchfile existiert
+        if os.path.exists(self.touchfile):
+            # File ist da
+            # Jetzt Alter feststellen
+            self.logger.debug("Touchfile existiert bereits")
+            file_mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(self.touchfile))
+            today = datetime.datetime.today()
+            age = today - file_mod_time
+            daysold = age.days
+            self.logger.debug(f'Alter in Tagen: {daysold}')
+        else:
+            return True # Dann ausführen, da touchfile bisher nicht existiert
+        
+        if self.args.mindays == -1:
+            return True # wenn mindays nicht gesetzt, dann wird immer ausgeführt
+        
+        if daysold < self.args.mindays:
+            # Dann keine Ausführung.
+            self.logger.debug("Touchfile zu jung")
+            return False
+        
+        if self.args.maxdays == -1:
+            # keine Obergrenze, dann Ausführung
+            return True
+        
+        if daysold >= self.args.maxdays:
+            self.logger.debug("Touchfile älter als maxdays")
+            return True # dann auf jeden Fall ausführen
+        
+        if random.randrange(daysold,self.args.maxdays) == daysold:
+            self.logger.debug("Treffer bei randrange für daysold")
+            return True # in der Range und zufällig augewählt
+        else:
+            self.logger.debug("Kein Treffer für Touchfile")
+            return False # dann heute noch nicht
+        
+        
     
     def collect_fs(self,fs):
         ''' Sammelt die FS '''
@@ -452,11 +514,12 @@ class zfsbackup(object):
         parser.add_argument('-r','--recursion',dest='recursion',help='Alle Sub-Filesysteme sollen auch übertragen werden',default=False,action='store_true')
         parser.add_argument('-w','--raw',dest='raw',help='Send mit Option --raw für zfs send',default=False,action='store_true')
         parser.add_argument('-k','--kill',dest='kill',help='Andere laufende Instanzen dieses Scripts, die mit den gleichen Aufrufparamtern gestartet wurden, werden gekillt.',default=False,action='store_true')
-        parser.add_argument('--touch_file',dest='touch_file',help='Das File welches einen touch erhält bei erfolgreicher Ausführung.',default=None)
-        parser.add_argument('--mindays',dest='mindays',required='--touch_file' in sys.argv,help='Das Touchfile sollte mindestens diese Anzahl Tage alt sein, damit ein Backup gestartet wird',
-                            type=int,default=0)
-        parser.add_argument('--maxdays',dest='maxdays',required='--touch_file' in sys.argv,help='Falls randrange(mindays,maxdays <= Alter Touch-File in Tagen, dann backup',
-                            type=int,default=0)
+        parser.add_argument('--touch_file',dest='touch_file',required='--mindays' in sys.argv or '--maxdays' in sys.argv,
+                            help='Das File welches einen touch erhält bei erfolgreicher Ausführung.',default=None)
+        parser.add_argument('--mindays',dest='mindays',help='Das Touchfile sollte mindestens diese Anzahl Tage alt sein, damit ein Backup gestartet wird',
+                            type=int,default=-1)
+        parser.add_argument('--maxdays',dest='maxdays',help='Falls randrange(mindays,maxdays <= Alter Touch-File in Tagen, dann backup',
+                            type=int,default=-1)
         self.args = parser.parse_args()
         self.logger = logging.getLogger(LOGNAME)
         if self.args.debugging:
