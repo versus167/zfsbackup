@@ -518,7 +518,7 @@ class zfsbackup(object):
                             help='Das File welches einen touch erhält bei erfolgreicher Ausführung.',default=None)
         parser.add_argument('--mindays',dest='mindays',help='Das Touchfile sollte mindestens diese Anzahl Tage alt sein, damit ein Backup gestartet wird',
                             type=int,default=-1)
-        parser.add_argument('--maxdays',dest='maxdays',help='Falls randrange(mindays,maxdays <= Alter Touch-File in Tagen, dann backup',
+        parser.add_argument('--maxdays',dest='maxdays',help='Falls randrange(mindays,maxdays) == Alter Touch-File in Tagen, dann backup',
                             type=int,default=-1)
         self.args = parser.parse_args()
         self.logger = logging.getLogger(LOGNAME)
