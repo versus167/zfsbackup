@@ -461,7 +461,7 @@ class zfsbackup(object):
         
         if daysold < self.args.mindays:
             # Dann keine Ausführung.
-            self.logger.debug("Touchfile zu jung")
+            self.logger.info("Touchfile zu jung")
             return False
         
         if self.args.maxdays == -1:
@@ -476,7 +476,7 @@ class zfsbackup(object):
             self.logger.debug("Treffer bei randrange für daysold")
             return True # in der Range und zufällig augewählt
         else:
-            self.logger.debug("Kein Treffer für Touchfile")
+            self.logger.info("Touchfile in Range aber heute kein Treffer!")
             return False # dann heute noch nicht
         
         
