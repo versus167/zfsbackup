@@ -15,7 +15,7 @@ todo:
     - check done-file ob ausgeführt werden soll - nach range
 
 
-2022.25 2022       - --touch-file --mindays und --maxdays Versuch die Ausführung verteilter zu gestalten - vs.
+2022.25 2022-01-21 - --touch-file --mindays und --maxdays Versuch die Ausführung verteilter zu gestalten - vs.
 2021.24 2021-11-13 - Versuch Abbrüche der Netzverbindung abzufangen...zusätzlich --kill Switch vs.
 2021.23 2021-09-23 - imrunning verbessert - vs.
 2021.22 2021-09-09 - --raw bzw -w eingefügt - damit entscheidet der Aufruf ob raw gesendet wird oder nicht -vs
@@ -46,7 +46,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2022.24.5 - 2022-01-20'
+VERSION='2022.25 - 2022-01-21'
 LOGNAME = 'ZFSB'
 
 
