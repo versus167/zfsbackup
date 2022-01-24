@@ -1,19 +1,22 @@
 #!/bin/bash
+
+sudo rm -rf release
+
 mkdir -p release/usr/bin
 mkdir -p release/DEBIAN
 mkdir -p release/etc/sudoers.d
 cp ./deb/zfsbackup.py ./release/usr/bin/zfsbackup
-chown root:root ./release/usr/bin/zfsbackup
-chmod 0555 ./release/usr/bin/zfsbackup
+sudo chown root:root ./release/usr/bin/zfsbackup
+sudo chmod 0555 ./release/usr/bin/zfsbackup
 cp ./deb/zfsbackup_receiver.py ./release/usr/bin/zfsbackup_receiver
-chown root:root ./release/usr/bin/zfsbackup_receiver
-chmod 0555 ./release/usr/bin/zfsbackup_receiver
+sudo chown root:root ./release/usr/bin/zfsbackup_receiver
+sudo chmod 0555 ./release/usr/bin/zfsbackup_receiver
 cp ./deb/zfsbackup_receiver ./release/etc/sudoers.d/zfsbackup_receiver
-chown root:root ./release/etc/sudoers.d/zfsbackup_receiver
-chmod 0440 ./release/etc/sudoers.d/zfsbackup_receiver
+sudo chown root:root ./release/etc/sudoers.d/zfsbackup_receiver
+sudo chmod 0440 ./release/etc/sudoers.d/zfsbackup_receiver
 cp ./deb/control ./release/DEBIAN/control
 
-dpkg-deb --build release 
-rm zfsbackup.deb
-mv release.deb zfsbackup.deb
+sudo dpkg-deb --build release 
+sudo rm zfsbackup.deb
+sudo mv release.deb zfsbackup.deb
 

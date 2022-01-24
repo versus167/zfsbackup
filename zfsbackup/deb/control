@@ -1,9 +1,9 @@
 Package: zfsbackup
-Version: 2021.24.2
+Version: 2022.25
 Section: server
 Priority: optional
 Architecture: all
 Essential: no
-Installed-size: 18
+Installed-size: 25
 Maintainer: Volker Süß
 Description: ZFS Backup von SRC-Dataset auf DST-Dataset - auch mit encryption
