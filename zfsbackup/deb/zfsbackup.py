@@ -14,7 +14,7 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
-2022.26.2 2022.07.23 - fix touch_file setzen, wenn Fehler aufgetreten sind - vs.
+2022.26.3 2022.07.23 - fix touch_file setzen, wenn Fehler aufgetreten sind - vs.
 2022.26 2022.01.24 - --without-root lässt das übergebene (relative) Root-System unbehandelt - vs.
 2022.25 2022-01-21 - --touch-file --mindays und --maxdays Versuch die Ausführung verteilter zu gestalten - vs.
 2021.24 2021-11-13 - Versuch Abbrüche der Netzverbindung abzufangen...zusätzlich --kill Switch vs.
@@ -47,7 +47,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2022.26.2 - 2022-07-23'
+VERSION='2022.26.3 - 2022-07-23'
 LOGNAME = 'ZFSB'
 
 
@@ -552,19 +552,21 @@ class zfs_back(object):
     Hier findet als der reine Backupablauf seinen Platz
     '''
     def __init__(self,fromfs,tofs,prefix,sshdest,holdtag,nosnapshot,raw):
+        self.nosnapshot = nosnapshot
         self.raw = raw
+        self.holdtag = holdtag
         self.logger = logging.getLogger(LOGNAME)
         self.logger.info(f'Backup von {fromfs} nach {tofs} startet.')
         self.PREFIX = prefix
         if sshdest != None:
-            sshcmdwithoutsudo = 'ssh -T '+sshdest+' '
-            sshcmdsudo = sshcmdwithoutsudo +'sudo '
+            self.sshcmdwithoutsudo = 'ssh -T '+sshdest+' '
+            self.sshcmdsudo = self.sshcmdwithoutsudo +'sudo '
         else:
-            sshcmdsudo = ''
-            sshcmdwithoutsudo = ''
-        self.logger.debug(f'{tofs} - {sshcmdwithoutsudo} - {sshcmdsudo}')
-        self.src = zfs_fs(fromfs,self.PREFIX,holdtag = holdtag)
-        self.dst = zfs_fs(tofs,self.PREFIX,connectionsudo=sshcmdsudo,connection=sshcmdwithoutsudo,holdtag=holdtag)
+            self.sshcmdsudo = ''
+            self.sshcmdwithoutsudo = ''
+        self.logger.debug(f'{tofs} - {self.sshcmdwithoutsudo} - {self.sshcmdsudo}')
+        self.src = zfs_fs(fromfs,self.PREFIX,holdtag = self.holdtag)
+        self.dst = zfs_fs(tofs,self.PREFIX,connectionsudo=self.sshcmdsudo,connection=self.sshcmdwithoutsudo,holdtag=self.holdtag)
         
         
         self.logger.debug(f'SRC: {self.src.fs} exist: {self.src.dataset_exist} encryption: {self.src.has_encryption} pool_encryption: {self.src.pool_has_encryption}')
@@ -594,7 +596,7 @@ class zfs_back(object):
             if self.src.has_encryption and self.dst.pool_has_encryption == False:
                 self.logger.error('Das Source-Dataset hat encryption aktiv, aber der Zielpool nicht!')
                 return False
-            if nosnapshot:
+            if self.nosnapshot:
                 newsnap = self.src.lastsnap
             else:
                 newsnap = self.src.takenextsnap()
@@ -617,7 +619,7 @@ class zfs_back(object):
         
         else:
             # es gibt also einen gemeinsamen Snapshot - neuen Snapshot erstellen und inkrementell senden
-            if nosnapshot:
+            if self.nosnapshot:
                 newsnap = self.src.lastsnap
             else:
                 newsnap = self.src.takenextsnap()
@@ -635,7 +637,7 @@ class zfs_back(object):
             else:
                 addcmd = ''
             cmdfrom = f'zfs send {addcmd} -i {oldsnap} {newsnap}'
-            cmdto =  sshcmdsudo+'zfsbackup_receiver zfs receive -vs '+self.dst.fs  # Versuch ohne -F vs. 2021/08/31
+            cmdto =  self.sshcmdsudo+'zfsbackup_receiver zfs receive -vs '+self.dst.fs  # Versuch ohne -F vs. 2021/08/31
             subrunPIPE(cmdfrom,cmdto)
             self.src.clear_holdsnaps((oldsnap,newsnap))
             self.dst_hold_update(newsnap)
