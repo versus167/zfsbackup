@@ -14,6 +14,7 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
+2022.26.1 2022.07.23 - fix touch_file setzen, wenn Fehler aufgetreten sind - vs.
 2022.26 2022.01.24 - --without-root lässt das übergebene (relative) Root-System unbehandelt - vs.
 2022.25 2022-01-21 - --touch-file --mindays und --maxdays Versuch die Ausführung verteilter zu gestalten - vs.
 2021.24 2021-11-13 - Versuch Abbrüche der Netzverbindung abzufangen...zusätzlich --kill Switch vs.
@@ -46,7 +47,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2022.26 - 2022-01-24'
+VERSION='2022.26.1 - 2022-07-23'
 LOGNAME = 'ZFSB'
 
 
@@ -398,7 +399,7 @@ class zfsbackup(object):
             pass
         else:
             return
-        
+        erfolg_all = True
         if self.args.recursion:
             # Dann also mit Rekursion und damit etwas anderes Handling
             self.fslist = []
@@ -411,18 +412,21 @@ class zfsbackup(object):
                 for fs in self.fslist[startlist:]:
                     # Erzeugen der entsprechenden FS-Paare und Übergabe an zfs_back
                     tofs = self.gettofs(fromroot=self.args.fromfs,fromfs=fs,toroot=self.args.tofs)
-                    zfs_back(fromfs=fs, tofs=tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
+                    erfolg = zfs_back(fromfs=fs, tofs=tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
                              ,holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw)
-                    
+                    if erfolg == False:
+                        erfolg_all = False
             else:
                 self.logger.info(f'Kein korrektes From-Filesystem übergeben! -> {self.args.fromfs}')
                 return
             # return - wollen wir hier eigentlich nicht
         else:
-            zfs_back(fromfs=self.args.fromfs, tofs=self.args.tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
+            erfolg = zfs_back(fromfs=self.args.fromfs, tofs=self.args.tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
                      , holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw)#
+            if erfolg == False:
+                erfolg_all = False
         # Wenn wir hier sind, dann war alles ok?!
-        if self.args.touch_file:
+        if self.args.touch_file and erfolg_all:
             self.logger.debug(f"Now touch the file: {self.args.touch_file} aka {self.touchfile}")
             Path(self.touchfile).touch()
         
@@ -584,17 +588,17 @@ class zfs_back(object):
             # es gibt also keinen identischen Snapshot -> Damit Versuch neuen Snapshot zu senden und fs zu senden
             if self.dst.dataset_exist:
                 self.logger.error(f'Das Zieldataset existiert bereits und es gibt keinen identischen Snapshot')
-                return
+                return False
             if self.src.has_encryption and self.dst.pool_has_encryption == False:
                 self.logger.error('Das Source-Dataset hat encryption aktiv, aber der Zielpool nicht!')
-                return
+                return False
             if nosnapshot:
                 newsnap = self.src.lastsnap
             else:
                 newsnap = self.src.takenextsnap()
             if newsnap == None:
                 self.logger.error('Kein Snapshot zum Senden vorhanden!')
-                return
+                return False
             self.src.hold_snap(newsnap)
             if self.raw:
                 # add w to command
@@ -607,7 +611,7 @@ class zfs_back(object):
             
             self.src.clear_holdsnaps((newsnap,))
             self.dst_hold_update(newsnap)
-            return
+            return True
         
         else:
             # es gibt also einen gemeinsamen Snapshot - neuen Snapshot erstellen und inkrementell senden
@@ -617,11 +621,11 @@ class zfs_back(object):
                 newsnap = self.src.takenextsnap()
             if newsnap == None:
                 self.logger.error('Kein Snapshot zum Senden vorhanden!')
-                return
+                return False
             oldsnap = self.src.fs+'@'+self.PREFIX+'_'+lastmatch
             if oldsnap == newsnap:
                 self.logger.info(f"Keine neuen Snapshots zu übertragen. {newsnap} ist bereits am Ziel vorhanden")
-                return
+                return True
             self.src.hold_snap(newsnap)
             if self.raw:
                 # add w to command
@@ -633,7 +637,7 @@ class zfs_back(object):
             subrunPIPE(cmdfrom,cmdto)
             self.src.clear_holdsnaps((oldsnap,newsnap))
             self.dst_hold_update(newsnap)
-            return
+            return True
         
     def get_snapname(self,snapshotname):
         a = snapshotname.split('@')
@@ -666,9 +670,10 @@ class zfs_back(object):
                 fromsnapshot = j[2]
         if fromsnapshot == None:
             self.logger.error('Das Resume scheint nicht gelungen...')
-            return
+            return False
         self.dst_hold_update(fromsnapshot)
         self.src.clear_holdsnaps((fromsnapshot,)) # alle aus den fromsnapshot releasen
+        return True
         
     def dst_hold_update(self,fromsnap):
         ''' setzt den aktuell übertragenen Snap auf Hold und released die anderen '''
