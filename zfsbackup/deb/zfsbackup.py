@@ -14,7 +14,7 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
-2022.26.1 2022.07.23 - fix touch_file setzen, wenn Fehler aufgetreten sind - vs.
+2022.26.2 2022.07.23 - fix touch_file setzen, wenn Fehler aufgetreten sind - vs.
 2022.26 2022.01.24 - --without-root lässt das übergebene (relative) Root-System unbehandelt - vs.
 2022.25 2022-01-21 - --touch-file --mindays und --maxdays Versuch die Ausführung verteilter zu gestalten - vs.
 2021.24 2021-11-13 - Versuch Abbrüche der Netzverbindung abzufangen...zusätzlich --kill Switch vs.
@@ -47,7 +47,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2022.26.1 - 2022-07-23'
+VERSION='2022.26.2 - 2022-07-23'
 LOGNAME = 'ZFSB'
 
 
@@ -412,8 +412,9 @@ class zfsbackup(object):
                 for fs in self.fslist[startlist:]:
                     # Erzeugen der entsprechenden FS-Paare und Übergabe an zfs_back
                     tofs = self.gettofs(fromroot=self.args.fromfs,fromfs=fs,toroot=self.args.tofs)
-                    erfolg = zfs_back(fromfs=fs, tofs=tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
+                    zfsb = zfs_back(fromfs=fs, tofs=tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
                              ,holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw)
+                    erfolg = zfsb.start()
                     if erfolg == False:
                         erfolg_all = False
             else:
@@ -421,8 +422,9 @@ class zfsbackup(object):
                 return
             # return - wollen wir hier eigentlich nicht
         else:
-            erfolg = zfs_back(fromfs=self.args.fromfs, tofs=self.args.tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
+            zfsb = zfs_back(fromfs=self.args.fromfs, tofs=self.args.tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
                      , holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw)#
+            erfolg = zfsb.start()
             if erfolg == False:
                 erfolg_all = False
         # Wenn wir hier sind, dann war alles ok?!
@@ -550,9 +552,6 @@ class zfs_back(object):
     Hier findet als der reine Backupablauf seinen Platz
     '''
     def __init__(self,fromfs,tofs,prefix,sshdest,holdtag,nosnapshot,raw):
-        '''
-        src und dst anlegen 
-        '''
         self.raw = raw
         self.logger = logging.getLogger(LOGNAME)
         self.logger.info(f'Backup von {fromfs} nach {tofs} startet.')
@@ -570,6 +569,9 @@ class zfs_back(object):
         
         self.logger.debug(f'SRC: {self.src.fs} exist: {self.src.dataset_exist} encryption: {self.src.has_encryption} pool_encryption: {self.src.pool_has_encryption}')
         self.logger.debug(f'DST: {self.dst.fs} exist: {self.dst.dataset_exist} encryption: {self.dst.has_encryption} pool_encryption: {self.dst.pool_has_encryption}')
+    def start(self):
+        
+        
         
         # 1. Schritt -> Token checken - falls ja, dann Versuch fortsetzen
         if self.dst.dataset_exist:
