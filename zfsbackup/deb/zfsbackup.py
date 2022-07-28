@@ -14,6 +14,7 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
+2022.27.1 2022.07.28 - fix sshcmdsudo - vs.
 2022.27 2022.07.27 - fix touch_file setzen, wenn Fehler aufgetreten sind - vs.
 2022.26 2022.01.24 - --without-root lässt das übergebene (relative) Root-System unbehandelt - vs.
 2022.25 2022-01-21 - --touch-file --mindays und --maxdays Versuch die Ausführung verteilter zu gestalten - vs.
@@ -47,7 +48,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2022.27 - 2022-07-27'
+VERSION='2022.27.1 - 2022-07-28'
 LOGNAME = 'ZFSB'
 
 
@@ -610,7 +611,7 @@ class zfs_back(object):
             else:
                 addcmd = ''
             cmdfrom = f'zfs send {addcmd} {newsnap}' # -v mal weggelassen
-            cmdto = sshcmdsudo+'zfsbackup_receiver zfs receive -vs -o compression=lz4 -o rdonly=on '+self.dst.fs # neues Filesystem am Ziel erstellen
+            cmdto = self.sshcmdsudo+'zfsbackup_receiver zfs receive -vs -o compression=lz4 -o rdonly=on '+self.dst.fs # neues Filesystem am Ziel erstellen
             subrunPIPE(cmdfrom,cmdto)
             
             self.src.clear_holdsnaps((newsnap,))
