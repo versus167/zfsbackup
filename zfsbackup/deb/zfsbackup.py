@@ -14,6 +14,7 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
+2023.28 2023-10-26 - Anpassung snapname-convention an zfsnappy 2023.37 - vs.
 2022.27.1 2022.07.28 - fix sshcmdsudo - vs.
 2022.27 2022.07.27 - fix touch_file setzen, wenn Fehler aufgetreten sind - vs.
 2022.26 2022.01.24 - --without-root lässt das übergebene (relative) Root-System unbehandelt - vs.
@@ -48,7 +49,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2022.27.1 - 2022-07-28'
+VERSION='2023.28 - 2023-10-26'
 LOGNAME = 'ZFSB'
 
 
@@ -359,11 +360,16 @@ class zfs_fs(object):
         Hier wird ein neuer Snapshot gesetzt - Wenn erfolgreich, dann alle übrigen Holds löschen und den neuen auf 
         Hold setzen
         '''
-        aktuell = datetime.datetime.utcnow()
-        snapname = self.fs+'@'+self.PREFIX+'_'+aktuell.isoformat()
+        snapname = self.snapname()
         ret = subrun(self.connectionsudo+' zfs snapshot '+snapname)
         ret.check_returncode()
         self.__snaplist.append(aktuell.isoformat())
+        return snapname
+    
+    def snapname(self):
+        aktuell = datetime.datetime.utcnow()
+        snapname = self.ns.prefix+'_'+aktuell.isoformat() 
+        snapname = snapname.replace(":",'-').replace('.','-')
         return snapname
         
     def get_oldsnap(self):
