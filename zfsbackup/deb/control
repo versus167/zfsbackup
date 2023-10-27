@@ -1,5 +1,5 @@
 Package: zfsbackup
-Version: 2023.28.1
+Version: 2023.28.2
 Section: server
 Priority: optional
 Architecture: all
