@@ -14,7 +14,8 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
-2023.28.2 2023-10-26 - Anpassung snapname-convention an zfsnappy 2023.37 - vs.
+2023.29 2023-10-28 - Option --bandwith-limit - vs.
+2023.28.3 2023-10-27 - Anpassung snapname-convention an zfsnappy 2023.37 - vs.
 2022.27.1 2022.07.28 - fix sshcmdsudo - vs.
 2022.27 2022.07.27 - fix touch_file setzen, wenn Fehler aufgetreten sind - vs.
 2022.26 2022.01.24 - --without-root lässt das übergebene (relative) Root-System unbehandelt - vs.
@@ -49,7 +50,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2023.28.2 - 2023-10-27'
+VERSION='2023.28.29.b1 - 2023-10-28'
 LOGNAME = 'ZFSB'
 
 
@@ -73,23 +74,36 @@ def subrun(command,checkretcode=True,**kwargs):
     if checkretcode: ret.check_returncode()
     return ret
 
-def subrunPIPE(cmdfrom,cmdto,checkretcode=True,**kwargs):
+def subrunPIPE(cmdfrom,cmdto,limit=None,debug=False,checkretcode=True,**kwargs):
     '''
     Führt die übergeben Kommandozeile aus und gibt das Ergebnis
     zurück
     '''
     args = shlex.split(cmdfrom)
+    if limit != None:
+        cmd_pv = f"pv -L {limit}"
+        
+        if debug == False:
+            cmd_pv = f'{cmd_pv} -q'
+        args2 = shlex.split(cmd_pv)
     log = logging.getLogger(LOGNAME)
     log.info(' '.join(args))
-    argsto = shlex.split(cmdto)
+    argsto = shlex.split(cmdto) 
     log.info(f'pipe to -> {" ".join(argsto)}')
-    ps = subprocess.Popen(args, stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
-    argsto = shlex.split(cmdto)
-    ziel = subprocess.Popen(argsto, stdin=ps.stdout)   
+    #ps = subprocess.Popen(args, stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+    p1 = subprocess.Popen(args,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+    if limit == None:
+        ziel = subprocess.Popen(argsto, stdin=p1.stdout)
+    else:
+        p2 = subprocess.Popen(args2,stdin=p1.stdout,stdout=subprocess.PIPE)
+        ziel = subprocess.Popen(argsto, stdin=p2.stdout)
+    #p1.wait()
+    #if limit != None:
+    #    p2.wait()   
     vgl = ''
     cnt = 0
     output = []
-    for line in ps.stderr:
+    for line in p1.stderr:
         if "closed by remote host" in line or "send disconnect: Broken Pipe" in line:
             log.error("Abbruch der Verbindung -> Ende Script")
             exit(1)
@@ -276,7 +290,6 @@ class zfs_fs(object):
         if len(self.snaplist) == 0:
             return None
         return self.fs+'@'+self.PREFIX+'_'+self.snaplist[-1]
-        
 
     def updatesnaplist(self):
         # Snaplist ohne Prefix
@@ -295,8 +308,7 @@ class zfs_fs(object):
         if len(self.__snaplist) == 0:
             return
         self.__snaplist.sort()
-        #print(zeit(),self.fs,self.PREFIX)
-        #print(self.snaplist[-2:])
+        
         return
     def __get_holdsnaps(self):
         '''
@@ -360,10 +372,12 @@ class zfs_fs(object):
         Hier wird ein neuer Snapshot gesetzt - Wenn erfolgreich, dann alle übrigen Holds löschen und den neuen auf 
         Hold setzen
         '''
-        snapname = self.snapname()
+        snapname = self.fs+'@'+self.snapname()
         ret = subrun(self.connectionsudo+' zfs snapshot '+snapname)
         ret.check_returncode()
-        self.__snaplist.append(aktuell.isoformat())
+        vgl = self.fs+'@'+self.PREFIX+'_'
+        l = len(vgl)
+        self.__snaplist.append(snapname[l:])
         return snapname
     
     def snapname(self):
@@ -420,7 +434,7 @@ class zfsbackup(object):
                     # Erzeugen der entsprechenden FS-Paare und Übergabe an zfs_back
                     tofs = self.gettofs(fromroot=self.args.fromfs,fromfs=fs,toroot=self.args.tofs)
                     zfsb = zfs_back(fromfs=fs, tofs=tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
-                             ,holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw)
+                             ,holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw,args=self.args)
                     erfolg = zfsb.start()
                     if erfolg == False:
                         erfolg_all = False
@@ -430,7 +444,7 @@ class zfsbackup(object):
             # return - wollen wir hier eigentlich nicht
         else:
             zfsb = zfs_back(fromfs=self.args.fromfs, tofs=self.args.tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
-                     , holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw)#
+                     , holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw,args=self.args)#
             erfolg = zfsb.start()
             if erfolg == False:
                 erfolg_all = False
@@ -541,6 +555,8 @@ class zfsbackup(object):
                             type=int,default=-1)
         parser.add_argument('--maxdays',dest='maxdays',help='Falls randrange(mindays,maxdays) == Alter Touch-File in Tagen, dann backup',
                             type=int,default=-1)
+        parser.add_argument('--bandwith-limit',dest='bandwith_limit',help='Limitiert die Bandbreite in Bytes pro Sekunde (Anhänge K,M,G,T sind erlaubt) - Beispiel --bandwith-limit 50M = Limit auf 50 MByte/sec',
+                            default=None)
         self.args = parser.parse_args()
         self.logger = logging.getLogger(LOGNAME)
         if self.args.debugging:
@@ -558,7 +574,8 @@ class zfs_back(object):
     '''
     Hier findet als der reine Backupablauf seinen Platz
     '''
-    def __init__(self,fromfs,tofs,prefix,sshdest,holdtag,nosnapshot,raw):
+    def __init__(self,fromfs,tofs,prefix,sshdest,holdtag,nosnapshot,raw,args):
+        self.args = args
         self.nosnapshot = nosnapshot
         self.raw = raw
         self.holdtag = holdtag
@@ -618,7 +635,7 @@ class zfs_back(object):
                 addcmd = ''
             cmdfrom = f'zfs send {addcmd} {newsnap}' # -v mal weggelassen
             cmdto = self.sshcmdsudo+'zfsbackup_receiver zfs receive -vs -o compression=lz4 -o rdonly=on '+self.dst.fs # neues Filesystem am Ziel erstellen
-            subrunPIPE(cmdfrom,cmdto)
+            subrunPIPE(cmdfrom,cmdto,limit=self.args.bandwith_limit,debug=self.args.debugging)
             
             self.src.clear_holdsnaps((newsnap,))
             self.dst_hold_update(newsnap)
@@ -645,7 +662,7 @@ class zfs_back(object):
                 addcmd = ''
             cmdfrom = f'zfs send {addcmd} -i {oldsnap} {newsnap}'
             cmdto =  self.sshcmdsudo+'zfsbackup_receiver zfs receive -vs '+self.dst.fs  # Versuch ohne -F vs. 2021/08/31
-            subrunPIPE(cmdfrom,cmdto)
+            subrunPIPE(cmdfrom,cmdto,limit=self.args.bandwith_limit,debug=self.args.debugging)
             self.src.clear_holdsnaps((oldsnap,newsnap))
             self.dst_hold_update(newsnap)
             return True
@@ -672,7 +689,7 @@ class zfs_back(object):
             addcmd = ''
         cmdfrom = f'zfs send -{addcmd}vt {token}'
         cmdto = self.dst.connectionsudo+' zfsbackup_receiver zfs receive -vs '+self.dst.fs
-        output = subrunPIPE(cmdfrom, cmdto)
+        output = subrunPIPE(cmdfrom, cmdto,limit=self.args.bandwith_limit,debug=self.args.debugging)
         fromsnapshot = None
         for i in output:
             j = i.split()
