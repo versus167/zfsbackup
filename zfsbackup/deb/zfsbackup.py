@@ -14,7 +14,7 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
-2024.29a 2024-06-07 - UTC-Handling angepasst - vs.
+2024.29b 2024-06-07 - UTC-Handling angepasst - vs.
 2023.29 2023-10-28 - Option --bandwith-limit - vs.
 2023.28.3 2023-10-27 - Anpassung snapname-convention an zfsnappy 2023.37 - vs.
 2022.27.1 2022.07.28 - fix sshcmdsudo - vs.
@@ -51,7 +51,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2024.29a - 2024-06-07'
+VERSION='2024.29b - 2024-06-07'
 LOGNAME = 'ZFSB'
 
 
@@ -63,6 +63,14 @@ from pathlib import Path
 
 def zeit():
     return time.strftime("%Y-%m-%d %H:%M:%S")
+
+def get_utc_now_naive():
+    """Gets the current UTC time as a timezone-aware datetime object."""
+    utc = pytz.utc
+    now_utc_aware = utc.localize(datetime.datetime.now())
+    heute_naive = now_utc_aware.replace(tzinfo=None)
+    return heute_naive
+
 def subrun(command,checkretcode=True,**kwargs):
     '''
     Führt die übergebene Kommandozeile aus und gibt das Ergebnis
@@ -382,7 +390,7 @@ class zfs_fs(object):
         return snapname
     
     def snapname(self):
-        aktuell = datetime.datetime.now(datetime.UTC)
+        aktuell = get_utc_now_naive()
         snapname = self.PREFIX+'_'+aktuell.isoformat() 
         snapname = snapname.replace(":",'-').replace('.','-')
         return snapname
