@@ -14,7 +14,7 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
-2024.29b 2024-06-07 - UTC-Handling angepasst - vs.
+2024.29c 2024-06-07 - UTC-Handling angepasst - vs.
 2023.29 2023-10-28 - Option --bandwith-limit - vs.
 2023.28.3 2023-10-27 - Anpassung snapname-convention an zfsnappy 2023.37 - vs.
 2022.27.1 2022.07.28 - fix sshcmdsudo - vs.
@@ -51,13 +51,13 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2024.29b - 2024-06-07'
+VERSION='2024.29c - 2024-06-07'
 LOGNAME = 'ZFSB'
 
 
 
 import subprocess,shlex, argparse, os, signal
-import time,sys, datetime
+import time,sys, datetime, pytz
 import logging, random
 from pathlib import Path
 
