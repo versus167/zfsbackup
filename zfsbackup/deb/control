@@ -1,5 +1,5 @@
 Package: zfsbackup
-Version: 2024.30
+Version: 2024.31
 Section: server
 Priority: optional
 Architecture: all

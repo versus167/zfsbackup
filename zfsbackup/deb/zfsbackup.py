@@ -14,6 +14,7 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
+2024.31 2024-06-09 - ohny ptz
 2024.30 2024-06-09 - UTC-Handling angepasst - vs.
 2023.29 2023-10-28 - Option --bandwith-limit - vs.
 2023.28.3 2023-10-27 - Anpassung snapname-convention an zfsnappy 2023.37 - vs.
@@ -57,7 +58,7 @@ LOGNAME = 'ZFSB'
 
 
 import subprocess,shlex, argparse, os, signal
-import time,sys, datetime, pytz
+import time,sys, datetime
 import logging, random
 from pathlib import Path
 
@@ -65,10 +66,9 @@ def zeit():
     return time.strftime("%Y-%m-%d %H:%M:%S")
 
 def get_utc_now_naive():
-    """Gets the current UTC time as a timezone-aware datetime object."""
-    utc = pytz.utc
-    now_utc_aware = utc.localize(datetime.datetime.now())
-    heute_naive = now_utc_aware.replace(tzinfo=None)
+    """Gets the current UTC time as a timezone-naive datetime object."""
+    now_utc_aware = datetime.datetime.now(tz=datetime.timezone.utc)  # Get current UTC time
+    heute_naive = now_utc_aware.replace(tzinfo=None)  # Remove timezone information
     return heute_naive
 
 def subrun(command,checkretcode=True,**kwargs):
