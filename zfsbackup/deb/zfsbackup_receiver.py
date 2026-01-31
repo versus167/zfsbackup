@@ -12,7 +12,7 @@ Ablauf scheint klar ->
 
 Argument mit re checken - und dann an den subprocess samt stdin übergeben - fertig
 
-2026.2 - 2026-01-31 Erweiterung um hold release load-key unload-key
+2026.2 - 2026-01-31 Erweiterung um hold release load-key unload-key und alles in den Wrapper eingebettet
 2021.0.1 - 2021-09-02 Soweit einsatzfähig
 '''
 
@@ -24,8 +24,8 @@ VERSION='2026.2 - 2026-01-31'
 
 ALLOWED_PATTERNS = [
     # zfs receive (wie bisher)
-    r'^zfs receive -vs [^- ][^ ]*$',
-    r'^zfs receive -vs -o compression=lz4 -o rdonly=on [^- ][^ ]*$',
+    r'^zfs receive -vsu [^- ][^ ]*$',
+    r'^zfs receive -vsu -o compression=lz4 -o rdonly=on [^- ][^ ]*$',
 
     # zfs hold / release
     r'^zfs hold( -r)? [^ ]+ [^ ]+$',

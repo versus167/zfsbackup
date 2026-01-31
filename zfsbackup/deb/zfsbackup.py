@@ -14,7 +14,7 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
-2026.32 2026-01-29 - mit key-unlock vom zieldataset
+2026.32 2026-01-29 - mit key-unlock vom zieldataset - nicht mehr kompatibel mit Vorgängerversionen!- vs.
 2024.31 2024-06-09 - ohny ptz
 2024.30 2024-06-09 - UTC-Handling angepasst - vs.
 2023.29 2023-10-28 - Option --bandwith-limit - vs.
@@ -196,6 +196,14 @@ class zfs_fs(object):
        
             
         pass
+
+    def is_key_loaded(self):
+        if not self.pool_has_encryption or not self.has_encryption:
+            return False
+        cmd = f"{self.connection} zfs get -H -o value keystatus {self.fs}"
+        ret = subrun(cmd, stdout=subprocess.PIPE, universal_newlines=True, checkretcode=True)
+        status = ret.stdout.strip()
+        return status == "available"
 
     def get_pool_has_encryption(self):
         return self.__pool_has_encryption
@@ -430,50 +438,83 @@ class zfsbackup(object):
             pass
         else:
             return
+         # Key laden (falls konfiguriert)
+        if not self.load_target_key():
+            self.logger.error("Key für Target konnte nicht geladen werden -> Abbruch.")
+            return
         erfolg_all = True
-        if self.args.recursion:
-            # Dann also mit Rekursion und damit etwas anderes Handling
-            self.fslist = []
-            if self.collect_fs(self.args.fromfs):
-                self.logger.debug(self.fslist)
-                if self.args.withoutroot:
-                    startlist = 1
+        try:
+            if self.args.recursion:
+                # Dann also mit Rekursion und damit etwas anderes Handling
+                self.fslist = []
+                if self.collect_fs(self.args.fromfs):
+                    self.logger.debug(self.fslist)
+                    if self.args.withoutroot:
+                        startlist = 1
+                    else:
+                        startlist= 0
+                    for fs in self.fslist[startlist:]:
+                        # Erzeugen der entsprechenden FS-Paare und Übergabe an zfs_back
+                        tofs = self.gettofs(fromroot=self.args.fromfs,fromfs=fs,toroot=self.args.tofs)
+                        zfsb = zfs_back(fromfs=fs, tofs=tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
+                                 ,holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw,args=self.args)
+                        erfolg = zfsb.start()
+                        if erfolg == False:
+                            erfolg_all = False
                 else:
-                    startlist= 0
-                for fs in self.fslist[startlist:]:
-                    # Erzeugen der entsprechenden FS-Paare und Übergabe an zfs_back
-                    tofs = self.gettofs(fromroot=self.args.fromfs,fromfs=fs,toroot=self.args.tofs)
-                    zfsb = zfs_back(fromfs=fs, tofs=tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
-                             ,holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw,args=self.args)
-                    erfolg = zfsb.start()
-                    if erfolg == False:
-                        erfolg_all = False
+                    self.logger.info(f'Kein korrektes From-Filesystem übergeben! -> {self.args.fromfs}')
+                    return
+                # return - wollen wir hier eigentlich nicht
             else:
-                self.logger.info(f'Kein korrektes From-Filesystem übergeben! -> {self.args.fromfs}')
-                return
-            # return - wollen wir hier eigentlich nicht
-        else:
-            zfsb = zfs_back(fromfs=self.args.fromfs, tofs=self.args.tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
-                     , holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw,args=self.args)#
-            erfolg = zfsb.start()
-            if erfolg == False:
-                erfolg_all = False
-        # Wenn wir hier sind, dann war alles ok?!
-        if self.args.touch_file and erfolg_all:
-            self.logger.debug(f"Now touch the file: {self.args.touch_file} aka {self.touchfile}")
-            Path(self.touchfile).touch()
+                zfsb = zfs_back(fromfs=self.args.fromfs, tofs=self.args.tofs, prefix=self.args.prefix, sshdest=self.args.sshdest \
+                         , holdtag=self.args.holdtag,nosnapshot=self.args.nosnapshot,raw=self.args.raw,args=self.args)#
+                erfolg = zfsb.start()
+                if erfolg == False:
+                    erfolg_all = False
+            # Wenn wir hier sind, dann war alles ok?!
+            if self.args.touch_file and erfolg_all:
+                self.logger.debug(f"Now touch the file: {self.args.touch_file} aka {self.touchfile}")
+                Path(self.touchfile).touch()
+        finally:
+            # Key am Ende wieder entladen (falls geladen)
+            self.unload_target_key()
+    
+    def load_target_key(self):
+        """Lädt ggf. den Key für das verschlüsselte Root-Dataset am Ziel."""
+        if not (self.args.target_encrypted_root and self.args.target_key_file and self.args.sshdest):
+            return True  # nichts zu tun
+
+        keyfile = os.path.expanduser(self.args.target_key_file)
+        if not os.path.exists(keyfile):
+            self.logger.error(f"Key-File {keyfile} nicht gefunden.")
+            return False
+
+        with open(keyfile, "r") as f:
+            key = f.read().strip()
+
+        sshcmdsudo = f"ssh -T {self.args.sshdest} sudo zfsbackup_receiver"
+        cmd = f"{sshcmdsudo} zfs load-key {self.args.target_encrypted_root}"
+        self.logger.debug(f"Load-key: {cmd}")
+
+        ret = subprocess.run(
+            shlex.split(cmd),
+            input=key + "\n",
+            text=True,
+        )
+        if ret.returncode != 0:
+            self.logger.error(f"zfs load-key auf dem Ziel für {self.args.target_encrypted_root} fehlgeschlagen.")
+            return False
+        return True
         
-        
-        
-    def gettofs(self,fromroot,fromfs,toroot):
-        ''' Ermittelt daraus den korrekten Zielnamen '''
-        lenf = len(fromroot)
-        fs = fromfs[lenf:]
-        if len(fs) > 0:
-            tofs = toroot+'/'+fs[1:]
-        else:
-            tofs = toroot
-        return tofs
+    def unload_target_key(self):
+        """Entlädt den Key für das verschlüsselte Root-Dataset am Ziel, falls konfiguriert."""
+        if not (self.args.target_encrypted_root and self.args.target_key_file and self.args.sshdest):
+            return
+
+        sshcmdsudo = f"ssh -T {self.args.sshdest} sudo zfsbackup_receiver"
+        cmd = f"{sshcmdsudo} zfs unload-key {self.args.target_encrypted_root}"
+        self.logger.debug(f"Unload-key: {cmd}")
+        subprocess.run(shlex.split(cmd))
     
     def touchfile_handling(self):
         ''' Gibt true zurück, wenn das touchfile-handling nichts gegenteiliges aussagt '''
@@ -543,7 +584,7 @@ class zfsbackup(object):
             help='Übergabe des ZFS-Filesystems welches gesichert werden soll')
         # Destination-FS
         parser.add_argument("-t","--to",dest='tofs',required=True,
-            help='Übergabe des ZFS-Filesystems auf welches gesichert werden soll')
+            help='Übergabe des ZFS-Filesystems auf welches gesichert werden soll - relativ zum target-encrypted-root falls angegeben, sonst absolut')
         # Destination per ssh zu erreichen?
         parser.add_argument("-s","--sshdest",dest='sshdest',
             help='Übergabe des per ssh zu erreichenden Destination-Rechners')
@@ -567,6 +608,18 @@ class zfsbackup(object):
                             type=int,default=-1)
         parser.add_argument('--bandwith-limit',dest='bandwith_limit',help='Limitiert die Bandbreite in Bytes pro Sekunde (Anhänge K,M,G,T sind erlaubt) - Beispiel --bandwith-limit 50M = Limit auf 50 MByte/sec',
                             default=None)
+        parser.add_argument(
+            "--target_key_file",
+            dest="target_key_file",
+            help="Textdatei mit dem Encryption-Key für das Zieldataset (wird vor dem Backup geladen und danach wieder entladen).",
+            default=None,
+            )
+        parser.add_argument(
+            "--target_encrypted_root",
+            dest="target_encrypted_root",
+            help="Verschlüsseltes Root-Dataset auf dem Ziel, unter dem das Zieldataset liegt (z.B. tank/backuproot).",
+            default=None,
+            )
         self.args = parser.parse_args()
         self.logger = logging.getLogger(LOGNAME)
         if self.args.debugging:
@@ -600,15 +653,32 @@ class zfs_back(object):
             self.sshcmdwithoutsudo = ''
         self.logger.debug(f'{tofs} - {self.sshcmdwithoutsudo} - {self.sshcmdsudo}')
         self.src = zfs_fs(fromfs,self.PREFIX,holdtag = self.holdtag)
-        self.dst = zfs_fs(tofs,self.PREFIX,connectionsudo=self.sshcmdsudo,connection=self.sshcmdwithoutsudo,holdtag=self.holdtag)
         
+        if self.args.target_encrypted_root:
+            # tofs ist dann relativ zu diesem Root
+            if tofs.startswith(self.args.target_encrypted_root + "/"):
+                self.target_root = self.args.target_encrypted_root
+                self.target_fs = tofs
+            else:
+                self.target_root = self.args.target_encrypted_root
+                self.target_fs = self.args.target_encrypted_root + "/" + tofs
+        else:
+            self.target_root = None
+            self.target_fs = tofs
+
+    # bisher: self.dst = zfs_fs(tofs, ...)
+        self.dst = zfs_fs(self.target_fs, self.PREFIX,
+                      connectionsudo=self.sshcmdsudo,
+                      connection=self.sshcmdwithoutsudo,
+                      holdtag=self.holdtag)
         
         self.logger.debug(f'SRC: {self.src.fs} exist: {self.src.dataset_exist} encryption: {self.src.has_encryption} pool_encryption: {self.src.pool_has_encryption}')
         self.logger.debug(f'DST: {self.dst.fs} exist: {self.dst.dataset_exist} encryption: {self.dst.has_encryption} pool_encryption: {self.dst.pool_has_encryption}')
+        
+    
     def start(self):
         
-        
-        
+                       
         # 1. Schritt -> Token checken - falls ja, dann Versuch fortsetzen
         if self.dst.dataset_exist:
             token = self.dst.get_token()
@@ -643,8 +713,9 @@ class zfs_back(object):
                 addcmd = '-w'
             else:
                 addcmd = ''
+            
             cmdfrom = f'zfs send {addcmd} {newsnap}' # -v mal weggelassen
-            cmdto = self.sshcmdsudo+' zfs receive -vs -o compression=lz4 -o rdonly=on '+self.dst.fs # neues Filesystem am Ziel erstellen
+            cmdto = self.sshcmdsudo+' zfs receive -vsu -o compression=lz4 -o rdonly=on '+self.dst.fs # neues Filesystem am Ziel erstellen
             subrunPIPE(cmdfrom,cmdto,limit=self.args.bandwith_limit,debug=self.args.debugging)
             
             self.src.clear_holdsnaps((newsnap,))
@@ -671,11 +742,12 @@ class zfs_back(object):
             else:
                 addcmd = ''
             cmdfrom = f'zfs send {addcmd} -i {oldsnap} {newsnap}'
-            cmdto =  self.sshcmdsudo+' zfs receive -vs '+self.dst.fs  # Versuch ohne -F vs. 2021/08/31
+            cmdto =  self.sshcmdsudo+' zfs receive -vsu '+self.dst.fs  # Versuch ohne -F vs. 2021/08/31
             subrunPIPE(cmdfrom,cmdto,limit=self.args.bandwith_limit,debug=self.args.debugging)
             self.src.clear_holdsnaps((oldsnap,newsnap))
             self.dst_hold_update(newsnap)
-            return True
+
+        return True
         
     def get_snapname(self,snapshotname):
         a = snapshotname.split('@')
@@ -698,7 +770,7 @@ class zfs_back(object):
         else:
             addcmd = ''
         cmdfrom = f'zfs send -{addcmd}vt {token}'
-        cmdto = self.dst.connectionsudo+' zfs receive -vs '+self.dst.fs
+        cmdto = self.dst.connectionsudo+' zfs receive -vsu '+self.dst.fs
         output = subrunPIPE(cmdfrom, cmdto,limit=self.args.bandwith_limit,debug=self.args.debugging)
         fromsnapshot = None
         for i in output:
