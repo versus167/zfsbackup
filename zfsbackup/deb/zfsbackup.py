@@ -594,7 +594,7 @@ class zfs_back(object):
         self.PREFIX = prefix
         if sshdest != None:
             self.sshcmdwithoutsudo = 'ssh -T '+sshdest+' '
-            self.sshcmdsudo = self.sshcmdwithoutsudo +'sudo '
+            self.sshcmdsudo = self.sshcmdwithoutsudo +'sudo zfsbackup_receiver '
         else:
             self.sshcmdsudo = ''
             self.sshcmdwithoutsudo = ''
@@ -644,7 +644,7 @@ class zfs_back(object):
             else:
                 addcmd = ''
             cmdfrom = f'zfs send {addcmd} {newsnap}' # -v mal weggelassen
-            cmdto = self.sshcmdsudo+'zfsbackup_receiver zfs receive -vs -o compression=lz4 -o rdonly=on '+self.dst.fs # neues Filesystem am Ziel erstellen
+            cmdto = self.sshcmdsudo+' zfs receive -vs -o compression=lz4 -o rdonly=on '+self.dst.fs # neues Filesystem am Ziel erstellen
             subrunPIPE(cmdfrom,cmdto,limit=self.args.bandwith_limit,debug=self.args.debugging)
             
             self.src.clear_holdsnaps((newsnap,))
@@ -671,7 +671,7 @@ class zfs_back(object):
             else:
                 addcmd = ''
             cmdfrom = f'zfs send {addcmd} -i {oldsnap} {newsnap}'
-            cmdto =  self.sshcmdsudo+'zfsbackup_receiver zfs receive -vs '+self.dst.fs  # Versuch ohne -F vs. 2021/08/31
+            cmdto =  self.sshcmdsudo+' zfs receive -vs '+self.dst.fs  # Versuch ohne -F vs. 2021/08/31
             subrunPIPE(cmdfrom,cmdto,limit=self.args.bandwith_limit,debug=self.args.debugging)
             self.src.clear_holdsnaps((oldsnap,newsnap))
             self.dst_hold_update(newsnap)
@@ -698,7 +698,7 @@ class zfs_back(object):
         else:
             addcmd = ''
         cmdfrom = f'zfs send -{addcmd}vt {token}'
-        cmdto = self.dst.connectionsudo+' zfsbackup_receiver zfs receive -vs '+self.dst.fs
+        cmdto = self.dst.connectionsudo+' zfs receive -vs '+self.dst.fs
         output = subrunPIPE(cmdfrom, cmdto,limit=self.args.bandwith_limit,debug=self.args.debugging)
         fromsnapshot = None
         for i in output:
