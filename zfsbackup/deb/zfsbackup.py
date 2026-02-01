@@ -597,7 +597,7 @@ class zfsbackup(object):
                             help='Alle Sub-Filesysteme sollen auch übertragen werden',
                             default=False,action='store_true')
         parser.add_argument('--without-root',dest='withoutroot',
-                            help="zfsnappy wird nicht auf den root des übergebenen Filesystems angewendet",action="store_true")
+                            help="zfsbackup wird nicht auf den root des übergebenen Filesystems angewendet",action="store_true")
         parser.add_argument('-w','--raw',dest='raw',help='Send mit Option --raw für zfs send',default=False,action='store_true')
         parser.add_argument('-k','--kill',dest='kill',help='Andere laufende Instanzen dieses Scripts, die mit den gleichen Aufrufparamtern gestartet wurden, werden gekillt.',default=False,action='store_true')
         parser.add_argument('--touch_file',dest='touch_file',required='--mindays' in sys.argv or '--maxdays' in sys.argv,
