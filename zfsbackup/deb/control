@@ -2,7 +2,7 @@ Package: zfsbackup
 Version: 2026.32
 Section: server
 Priority: optional
-Architecture: allsumme(
+Architecture: all
 Essential: no
 Installed-size: 25
 Maintainer: Volker Süß
