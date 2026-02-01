@@ -14,7 +14,7 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
-2026.32 2026-01-29 - mit key-unlock vom zieldataset - nicht mehr kompatibel mit Vorgängerversionen!- vs.
+2026.32 2026-01-31 - mit key-unlock vom zieldataset - nicht mehr kompatibel mit Vorgängerversionen bei ssh-Transfer!- vs.
 2024.31 2024-06-09 - ohny ptz
 2024.30 2024-06-09 - UTC-Handling angepasst - vs.
 2023.29 2023-10-28 - Option --bandwith-limit - vs.
@@ -53,7 +53,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2024.30 - 2024-06-09'
+VERSION='2026.33 - 2026-01-31'
 LOGNAME = 'ZFSB'
 
 

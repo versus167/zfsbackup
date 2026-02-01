@@ -12,7 +12,7 @@ Ablauf scheint klar ->
 
 Argument mit re checken - und dann an den subprocess samt stdin übergeben - fertig
 
-2026.2 - 2026-01-31 Erweiterung um hold release load-key unload-key und alles in den Wrapper eingebettet
+2026.32 - 2026-01-31 Erweiterung um hold release load-key unload-key und alles in den Wrapper eingebettet - vs.
 2021.0.1 - 2021-09-02 Soweit einsatzfähig
 '''
 
@@ -20,7 +20,7 @@ Argument mit re checken - und dann an den subprocess samt stdin übergeben - fer
 import re, sys, shlex, subprocess
 
 APPNAME='zfsbackup_receiver'
-VERSION='2026.2 - 2026-01-31'
+VERSION='2026.32 - 2026-01-31'
 
 ALLOWED_PATTERNS = [
     # zfs receive (wie bisher)
