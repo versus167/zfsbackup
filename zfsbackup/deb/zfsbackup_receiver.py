@@ -20,7 +20,7 @@ Argument mit re checken - und dann an den subprocess samt stdin übergeben - fer
 import re, sys, shlex, subprocess
 
 APPNAME='zfsbackup_receiver'
-VERSION='2026.32 - 2026-01-31'
+VERSION='2026.33 - 2026-02-03'
 
 ALLOWED_PATTERNS = [
     # zfs receive (wie bisher)

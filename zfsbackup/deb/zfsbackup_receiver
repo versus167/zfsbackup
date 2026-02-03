@@ -1,7 +1,7 @@
 ## Allow zfsbackup_receiver to be called via sudo without a password
 ##
 ## CAUTION: Any syntax error introduced here will break sudo.
-## Version 2026.32
+## Version 2026.33
 Cmnd_Alias C_ZFSBACKUP_RECEIVER = \
   /usr/bin/zfsbackup_receiver zfs receive *, \
   /usr/bin/zfsbackup_receiver zfs hold *, \

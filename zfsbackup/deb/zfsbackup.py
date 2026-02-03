@@ -14,6 +14,7 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
+2026.33 2026-02-03 - gettofs wieder eingefügt - fix - vs.
 2026.32 2026-01-31 - mit key-unlock vom zieldataset - nicht mehr kompatibel mit Vorgängerversionen bei ssh-Transfer!- vs.
 2024.31 2024-06-09 - ohny ptz
 2024.30 2024-06-09 - UTC-Handling angepasst - vs.
@@ -478,6 +479,16 @@ class zfsbackup(object):
         finally:
             # Key am Ende wieder entladen (falls geladen)
             self.unload_target_key()
+    
+    def gettofs(self,fromroot,fromfs,toroot):
+        ''' Ermittelt daraus den korrekten Zielnamen '''
+        lenf = len(fromroot)
+        fs = fromfs[lenf:]
+        if len(fs) > 0:
+            tofs = toroot+'/'+fs[1:]
+        else:
+            tofs = toroot
+        return tofs
     
     def load_target_key(self):
         """Lädt ggf. den Key für das verschlüsselte Root-Dataset am Ziel."""
