@@ -54,7 +54,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2026.33 - 2026-01-31'
+VERSION='2026.33 - 2026-02-03'
 LOGNAME = 'ZFSB'
 
 
