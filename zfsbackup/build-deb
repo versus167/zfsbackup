@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Verzeichnisse im Paket: 0755 und root:root - dpkg legt fehlende so am Ziel an
+umask 022
 sudo rm -rf release
 
 mkdir -p release/usr/bin
@@ -22,7 +24,7 @@ cp ./deb/control ./release/DEBIAN/control
 cp ./deb/postinst ./release/DEBIAN/postinst
 sudo chmod 0755 ./release/DEBIAN/postinst
 
-sudo dpkg-deb --build release 
+sudo dpkg-deb --root-owner-group --build release 
 sudo rm zfsbackup.deb
 sudo mv release.deb zfsbackup.deb
 
