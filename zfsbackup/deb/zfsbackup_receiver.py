@@ -26,12 +26,12 @@ Gilt am Ziel trotzdem etwas anderes (lokal gesetzt), wird abgelehnt.
 
 CONFIGFILE - je Zeile: <benutzer> <dataset> [<dataset> ...]
     Erlaubt sind die genannten Datasets, alle Kinder und deren Snapshots.
-    Nicht aufgeführte Benutzer werden abgelehnt. Die Datei muss root gehören
-    und darf nur für root schreibbar sein. Vorlage: EXAMPLEFILE
+    Nicht aufgeführte Benutzer werden abgelehnt. Die Datei und ihr Verzeichnis müssen
+    root gehören und dürfen nur für root schreibbar sein. Vorlage: EXAMPLEFILE
 
 2026.34 - 2026-09-18 Sicherheitsfix: Umgehung der Musterprüfung per Tab/Anführungszeichen (shlex) beseitigt,
                      Argumente werden einzeln geprüft, Ziele je SUDO_USER beschränkt, Returncode wird weitergereicht.
-                     NICHT KOMPATIBEL: ohne /etc/zfsbackup_receiver.conf wird jeder Aufruf abgelehnt,
+                     NICHT KOMPATIBEL: ohne /etc/zfsbackup/zfsbackup_receiver.conf wird jeder Aufruf abgelehnt,
                      rohe (zfs send -w) und zusammengesetzte Ströme (-R, -I, -p) werden abgelehnt,
                      setuid=off devices=off wird auf den Config-Einträgen gesetzt - vs.
 2026.32 - 2026-01-31 Erweiterung um hold release load-key unload-key und alles in den Wrapper eingebettet - vs.
@@ -43,8 +43,8 @@ import os, re, stat, struct, sys, subprocess
 
 APPNAME='zfsbackup_receiver'
 VERSION='2026.34 - 2026-09-18'
-CONFIGFILE='/etc/zfsbackup_receiver.conf'
-EXAMPLEFILE='/usr/share/doc/zfsbackup/examples/zfsbackup_receiver.conf'
+CONFIGFILE='/etc/zfsbackup/zfsbackup_receiver.conf'
+EXAMPLEFILE=CONFIGFILE + '.example'
 
 # Namensbestandteil: kein führendes '-', kein Leerraum, keine Anführungszeichen/Backslashes
 _NAME = r'[A-Za-z0-9_][A-Za-z0-9_.:-]*'
@@ -263,12 +263,17 @@ def parse_config(text):
     return config
 
 
+def root_only(st, path):
+    if st.st_uid != 0 or st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+        raise NotAllowed(f'{path} muss root gehören und darf nur für root schreibbar sein')
+
+
 def read_config(path=CONFIGFILE):
     try:
+        # auch das Verzeichnis - sonst ließe sich die Datei darin austauschen
+        root_only(os.stat(os.path.dirname(path)), os.path.dirname(path))
         with open(path, encoding='utf-8') as f:
-            st = os.fstat(f.fileno())
-            if st.st_uid != 0 or st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
-                raise NotAllowed(f'{path} muss root gehören und darf nur für root schreibbar sein')
+            root_only(os.fstat(f.fileno()), path)
             return parse_config(f.read())
     except FileNotFoundError:
         raise NotAllowed(f'{path} fehlt - Vorlage: {EXAMPLEFILE}')

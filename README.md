@@ -61,15 +61,15 @@ options:
 
 ## zfsbackup_receiver (Zielrechner bei `-s`)
 Am Ziel ruft zfsbackup per `ssh … sudo zfsbackup_receiver zfs …` nur `receive`, `hold`, `release`, `load-key` und `unload-key` auf.
-Seit 2026.34 darf jeder Benutzer (`SUDO_USER`) nur in den Datasets arbeiten, die in `/etc/zfsbackup_receiver.conf` für ihn freigegeben sind (inklusive aller Kinder und Snapshots). Fehlt die Datei oder der Benutzer, lehnt der Receiver jeden Aufruf ab. Die Datei muss root gehören und darf nur für root schreibbar sein.
+Seit 2026.34 darf jeder Benutzer (`SUDO_USER`) nur in den Datasets arbeiten, die in `/etc/zfsbackup/zfsbackup_receiver.conf` für ihn freigegeben sind (inklusive aller Kinder und Snapshots). Fehlt die Datei oder der Benutzer, lehnt der Receiver jeden Aufruf ab. Die Datei und `/etc/zfsbackup` müssen root gehören und dürfen nur für root schreibbar sein.
 
-**Nicht kompatibel mit 2026.33 und älter:** Die Paketinstallation allein reicht am Ziel nicht mehr, die Datei muss angelegt werden. Eine Vorlage liegt unter `/usr/share/doc/zfsbackup/examples/zfsbackup_receiver.conf`:
+**Nicht kompatibel mit 2026.33 und älter:** Die Paketinstallation allein reicht am Ziel nicht mehr, die Datei muss angelegt werden. Die Vorlage liegt daneben als `zfsbackup_receiver.conf.example` und wird bei jedem Update ersetzt:
 ```
-install -o root -g root -m 0644 /usr/share/doc/zfsbackup/examples/zfsbackup_receiver.conf /etc/
+cp /etc/zfsbackup/zfsbackup_receiver.conf.example /etc/zfsbackup/zfsbackup_receiver.conf
 ```
 Beispiel:
 ```
-# /etc/zfsbackup_receiver.conf  -  <benutzer> <dataset> [<dataset> ...]
+# /etc/zfsbackup/zfsbackup_receiver.conf  -  <benutzer> <dataset> [<dataset> ...]
 lxc_back  tank/backup tank/backup_nd tank/backup_nb
 vsb       tank/vsb
 ```

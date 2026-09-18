@@ -302,8 +302,26 @@ class Config(unittest.TestCase):
 
     def test_shipped_example(self):
         # die ausgelieferte Vorlage muss gültig sein und darf niemanden freigeben
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'deb', 'zfsbackup_receiver.conf'), encoding='utf-8') as f:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'deb', 'zfsbackup_receiver.conf.example'), encoding='utf-8') as f:
             self.assertEqual(recv.parse_config(f.read()), {})
+
+    def test_paths(self):
+        self.assertEqual(recv.CONFIGFILE, '/etc/zfsbackup/zfsbackup_receiver.conf')
+        self.assertEqual(recv.EXAMPLEFILE, '/etc/zfsbackup/zfsbackup_receiver.conf.example')
+
+    def test_missing_names_example(self):
+        with self.assertRaisesRegex(recv.NotAllowed, 'fehlt - Vorlage: /etc/zfsbackup/zfsbackup_receiver.conf.example'):
+            recv.read_config('/nicht/vorhanden/zfsbackup_receiver.conf')
+
+    @unittest.skipIf(os.geteuid() == 0, 'als root gehört die Testdatei root')
+    def test_not_root_owned(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, 'zfsbackup_receiver.conf')
+            with open(p, 'w') as f:
+                f.write('a tank/x\n')
+            with self.assertRaisesRegex(recv.NotAllowed, 'muss root gehören'):
+                recv.read_config(p)
 
 
 if __name__ == '__main__':

@@ -1,4 +1,8 @@
-# /etc/zfsbackup_receiver.conf - Freigaben für zfsbackup_receiver
+# /etc/zfsbackup/zfsbackup_receiver.conf - Freigaben für zfsbackup_receiver
+#
+# Diese Datei ist nur die Vorlage (.example) und wird bei jedem Paket-Update
+# ersetzt. Die eigentliche Config daraus anlegen:
+#   cp /etc/zfsbackup/zfsbackup_receiver.conf.example /etc/zfsbackup/zfsbackup_receiver.conf
 #
 # Je Zeile: <benutzer> <dataset> [<dataset> ...]
 #   <benutzer>  das Konto, mit dem sich der Sender per ssh anmeldet (SUDO_USER)
@@ -11,8 +15,8 @@
 #
 # Nicht aufgeführte Benutzer werden abgelehnt. Fehlt diese Datei, lehnt
 # zfsbackup_receiver jeden Aufruf ab.
-# Die Datei muss root gehören und darf nur für root schreibbar sein:
-#   install -o root -g root -m 0644 /usr/share/doc/zfsbackup/examples/zfsbackup_receiver.conf /etc/
+# Die Datei und /etc/zfsbackup müssen root gehören und dürfen nur für root
+# schreibbar sein.
 #
 # Beispiele:
 # backup    tank/backup
