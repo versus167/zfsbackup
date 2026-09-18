@@ -1,10 +1,22 @@
 #!/bin/sh
 set -e
 
-if [ "$1" = "configure" ] && [ ! -e /etc/zfsbackup/zfsbackup_receiver.conf ]; then
-    echo "zfsbackup: /etc/zfsbackup/zfsbackup_receiver.conf fehlt - ohne diese Datei lehnt zfsbackup_receiver jeden Aufruf ab." >&2
-    echo "           Nur nötig, wenn dieser Rechner Backups per ssh empfängt. Vorlage daneben:" >&2
-    echo "           /etc/zfsbackup/zfsbackup_receiver.conf.example" >&2
+OLD=/etc/zfsbackup_receiver.conf
+CONF=/etc/zfsbackup/zfsbackup_receiver.conf
+
+if [ "$1" = "configure" ]; then
+    # 2026.34 las die Config aus /etc - an den neuen Ort übernehmen
+    if [ -e "$OLD" ] && [ ! -e "$CONF" ]; then
+        mv "$OLD" "$CONF"
+        echo "zfsbackup: $OLD nach $CONF verschoben" >&2
+    elif [ -e "$OLD" ]; then
+        echo "zfsbackup: $OLD wird nicht mehr gelesen, es gilt $CONF - bitte entfernen" >&2
+    fi
+    if [ ! -e "$CONF" ]; then
+        echo "zfsbackup: $CONF fehlt - ohne diese Datei lehnt zfsbackup_receiver jeden Aufruf ab." >&2
+        echo "           Nur nötig, wenn dieser Rechner Backups per ssh empfängt. Vorlage daneben:" >&2
+        echo "           $CONF.example" >&2
+    fi
 fi
 
 exit 0

@@ -29,9 +29,11 @@ CONFIGFILE - je Zeile: <benutzer> <dataset> [<dataset> ...]
     Nicht aufgeführte Benutzer werden abgelehnt. Die Datei und ihr Verzeichnis müssen
     root gehören und dürfen nur für root schreibbar sein. Vorlage: EXAMPLEFILE
 
+2026.35 - 2026-09-18 Config und Vorlage unter /etc/zfsbackup - postinst verschiebt /etc/zfsbackup_receiver.conf
+                     von 2026.34 dorthin - vs.
 2026.34 - 2026-09-18 Sicherheitsfix: Umgehung der Musterprüfung per Tab/Anführungszeichen (shlex) beseitigt,
                      Argumente werden einzeln geprüft, Ziele je SUDO_USER beschränkt, Returncode wird weitergereicht.
-                     NICHT KOMPATIBEL: ohne /etc/zfsbackup/zfsbackup_receiver.conf wird jeder Aufruf abgelehnt,
+                     NICHT KOMPATIBEL: ohne /etc/zfsbackup_receiver.conf wird jeder Aufruf abgelehnt,
                      rohe (zfs send -w) und zusammengesetzte Ströme (-R, -I, -p) werden abgelehnt,
                      setuid=off devices=off wird auf den Config-Einträgen gesetzt - vs.
 2026.32 - 2026-01-31 Erweiterung um hold release load-key unload-key und alles in den Wrapper eingebettet - vs.
@@ -42,7 +44,7 @@ CONFIGFILE - je Zeile: <benutzer> <dataset> [<dataset> ...]
 import os, re, stat, struct, sys, subprocess
 
 APPNAME='zfsbackup_receiver'
-VERSION='2026.34 - 2026-09-18'
+VERSION='2026.35 - 2026-09-18'
 CONFIGFILE='/etc/zfsbackup/zfsbackup_receiver.conf'
 EXAMPLEFILE=CONFIGFILE + '.example'
 

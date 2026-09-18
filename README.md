@@ -63,7 +63,7 @@ options:
 Am Ziel ruft zfsbackup per `ssh … sudo zfsbackup_receiver zfs …` nur `receive`, `hold`, `release`, `load-key` und `unload-key` auf.
 Seit 2026.34 darf jeder Benutzer (`SUDO_USER`) nur in den Datasets arbeiten, die in `/etc/zfsbackup/zfsbackup_receiver.conf` für ihn freigegeben sind (inklusive aller Kinder und Snapshots). Fehlt die Datei oder der Benutzer, lehnt der Receiver jeden Aufruf ab. Die Datei und `/etc/zfsbackup` müssen root gehören und dürfen nur für root schreibbar sein.
 
-**Nicht kompatibel mit 2026.33 und älter:** Die Paketinstallation allein reicht am Ziel nicht mehr, die Datei muss angelegt werden. Die Vorlage liegt daneben als `zfsbackup_receiver.conf.example` und wird bei jedem Update ersetzt:
+**Nicht kompatibel mit 2026.33 und älter:** Die Paketinstallation allein reicht am Ziel nicht mehr, die Datei muss angelegt werden. 2026.34 las die Config noch aus `/etc/zfsbackup_receiver.conf`. Beim Update auf 2026.35 verschiebt das Paket sie nach `/etc/zfsbackup/`. Die Vorlage liegt daneben als `zfsbackup_receiver.conf.example` und wird bei jedem Update ersetzt:
 ```
 cp /etc/zfsbackup/zfsbackup_receiver.conf.example /etc/zfsbackup/zfsbackup_receiver.conf
 ```

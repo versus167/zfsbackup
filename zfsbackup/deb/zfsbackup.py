@@ -14,6 +14,7 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
+2026.35 2026-09-18 - nur Paket: Config von zfsbackup_receiver unter /etc/zfsbackup - vs.
 2026.34 2026-09-18 - -w/--raw nicht mehr zusammen mit -s: zfsbackup_receiver 2026.34 lehnt rohe Ströme ab,
                      weil sie ein change-key der Quelle auf das Ziel übertragen - statt dessen --target_key_file - vs.
 2026.33 2026-02-03 - gettofs wieder eingefügt - fix - vs.
@@ -56,7 +57,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2026.34 - 2026-09-18'
+VERSION='2026.35 - 2026-09-18'
 LOGNAME = 'ZFSB'
 
 
