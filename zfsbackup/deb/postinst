@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ] && [ ! -e /etc/zfsbackup_receiver.conf ]; then
+    echo "zfsbackup: /etc/zfsbackup_receiver.conf fehlt - ohne diese Datei lehnt zfsbackup_receiver jeden Aufruf ab." >&2
+    echo "           Nur nötig, wenn dieser Rechner Backups per ssh empfängt. Vorlage:" >&2
+    echo "           /usr/share/doc/zfsbackup/examples/zfsbackup_receiver.conf" >&2
+fi
+
+exit 0

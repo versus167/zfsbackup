@@ -14,6 +14,8 @@ todo:
     - done-file touchen falls angegeben
     - check done-file ob ausgeführt werden soll - nach range
 
+2026.34 2026-09-18 - -w/--raw nicht mehr zusammen mit -s: zfsbackup_receiver 2026.34 lehnt rohe Ströme ab,
+                     weil sie ein change-key der Quelle auf das Ziel übertragen - statt dessen --target_key_file - vs.
 2026.33 2026-02-03 - gettofs wieder eingefügt - fix - vs.
 2026.32 2026-01-31 - mit key-unlock vom zieldataset - nicht mehr kompatibel mit Vorgängerversionen bei ssh-Transfer!- vs.
 2024.31 2024-06-09 - ohny ptz
@@ -54,7 +56,7 @@ Die beiden aktuellen Snapshots sollten auf hold stehen, damit die nicht gelösch
 
 
 APPNAME='zfsbackup'
-VERSION='2026.33 - 2026-02-03'
+VERSION='2026.34 - 2026-09-18'
 LOGNAME = 'ZFSB'
 
 
@@ -609,7 +611,7 @@ class zfsbackup(object):
                             default=False,action='store_true')
         parser.add_argument('--without-root',dest='withoutroot',
                             help="zfsbackup wird nicht auf den root des übergebenen Filesystems angewendet",action="store_true")
-        parser.add_argument('-w','--raw',dest='raw',help='Send mit Option --raw für zfs send',default=False,action='store_true')
+        parser.add_argument('-w','--raw',dest='raw',help='Send mit Option --raw für zfs send (nicht mit -s)',default=False,action='store_true')
         parser.add_argument('-k','--kill',dest='kill',help='Andere laufende Instanzen dieses Scripts, die mit den gleichen Aufrufparamtern gestartet wurden, werden gekillt.',default=False,action='store_true')
         parser.add_argument('--touch_file',dest='touch_file',required='--mindays' in sys.argv or '--maxdays' in sys.argv,
                             help='Das File welches einen touch erhält bei erfolgreicher Ausführung.',default=None)
@@ -632,6 +634,10 @@ class zfsbackup(object):
             default=None,
             )
         self.args = parser.parse_args()
+        if self.args.raw and self.args.sshdest:
+            parser.error('-w/--raw geht nicht mit -s: zfsbackup_receiver nimmt keine rohen Ströme an, '
+                         'weil sie ein change-key der Quelle auf das Ziel übertragen. '
+                         'Statt dessen --target_encrypted_root und --target_key_file verwenden.')
         self.logger = logging.getLogger(LOGNAME)
         if self.args.debugging:
             self.logger.setLevel(logging.DEBUG)

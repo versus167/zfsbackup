@@ -31,7 +31,8 @@ options:
                         (default: False)
   --without-root        zfsbackup wird nicht auf den root des übergebenen
                         Filesystems angewendet (default: False)
-  -w, --raw             Send mit Option --raw für zfs send (default: False)
+  -w, --raw             Send mit Option --raw für zfs send (nicht mit -s)
+                        (default: False)
   -k, --kill            Andere laufende Instanzen dieses Scripts, die mit den
                         gleichen Aufrufparamtern gestartet wurden, werden
                         gekillt. (default: False)
@@ -57,3 +58,26 @@ options:
 
 
 ```
+
+## zfsbackup_receiver (Zielrechner bei `-s`)
+Am Ziel ruft zfsbackup per `ssh … sudo zfsbackup_receiver zfs …` nur `receive`, `hold`, `release`, `load-key` und `unload-key` auf.
+Seit 2026.34 darf jeder Benutzer (`SUDO_USER`) nur in den Datasets arbeiten, die in `/etc/zfsbackup_receiver.conf` für ihn freigegeben sind (inklusive aller Kinder und Snapshots). Fehlt die Datei oder der Benutzer, lehnt der Receiver jeden Aufruf ab. Die Datei muss root gehören und darf nur für root schreibbar sein.
+
+**Nicht kompatibel mit 2026.33 und älter:** Die Paketinstallation allein reicht am Ziel nicht mehr, die Datei muss angelegt werden. Eine Vorlage liegt unter `/usr/share/doc/zfsbackup/examples/zfsbackup_receiver.conf`:
+```
+install -o root -g root -m 0644 /usr/share/doc/zfsbackup/examples/zfsbackup_receiver.conf /etc/
+```
+Beispiel:
+```
+# /etc/zfsbackup_receiver.conf  -  <benutzer> <dataset> [<dataset> ...]
+lxc_back  tank/backup tank/backup_nd tank/backup_nb
+vsb       tank/vsb
+```
+Außerdem nimmt der Receiver seit 2026.34 nur einfache, nicht-rohe Ströme an. Rohe Ströme (`zfs send -w`) lehnt er ab, weil ein roher inkrementeller Strom ein `zfs change-key` der Quelle auf das Ziel überträgt. Der Sender könnte so den Schlüssel am Ziel ersetzen. Zusammengesetzte Ströme (`-R`, `-I`, `-p`) lehnt er ebenfalls ab. Verschlüsselte Datasets sichert man deshalb ohne `-w` in ein verschlüsseltes Ziel mit eigenem Schlüssel:
+```
+zfsbackup -f zfshome/daten -t daten -s backup@ziel --target_encrypted_root tank/backuproot --target_key_file /root/ziel.key
+```
+
+Vor jedem Empfang setzt der Receiver auf dem passenden Config-Eintrag `setuid=off devices=off`. Ist der Eintrag selbst das neue Ziel, setzt er beides direkt nach dem Empfang. So kann ein eingehängtes Backup keine setuid-Programme oder Gerätedateien des Senders benutzbar machen. Einhängen und Dateien zurückholen geht weiterhin, die Bits bleiben in den Dateien erhalten. Weil das für alles unterhalb eines Eintrags gilt, gehören nur reine Backup-Zweige in die Config. Hat ein Admin darunter bewusst `setuid=on` oder `devices=on` gesetzt, lehnt der Receiver den Empfang dorthin ab.
+
+Die mitgelieferte sudoers-Regel gilt für `ALL`. Besser ist es, sie auf eine Gruppe zu beschränken (z.B. `%zfsrecv ALL = (root) NOPASSWD: C_ZFSBACKUP_RECEIVER`).

@@ -14,7 +14,13 @@ sudo chmod 0555 ./release/usr/bin/zfsbackup_receiver
 cp ./deb/zfsbackup_receiver ./release/etc/sudoers.d/zfsbackup_receiver
 sudo chown root:root ./release/etc/sudoers.d/zfsbackup_receiver
 sudo chmod 0440 ./release/etc/sudoers.d/zfsbackup_receiver
+mkdir -p release/usr/share/doc/zfsbackup/examples
+cp ./deb/zfsbackup_receiver.conf ./release/usr/share/doc/zfsbackup/examples/zfsbackup_receiver.conf
+sudo chown root:root ./release/usr/share/doc/zfsbackup/examples/zfsbackup_receiver.conf
+sudo chmod 0644 ./release/usr/share/doc/zfsbackup/examples/zfsbackup_receiver.conf
 cp ./deb/control ./release/DEBIAN/control
+cp ./deb/postinst ./release/DEBIAN/postinst
+sudo chmod 0755 ./release/DEBIAN/postinst
 
 sudo dpkg-deb --build release 
 sudo rm zfsbackup.deb
