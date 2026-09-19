@@ -513,9 +513,15 @@ class zfsbackup(object):
         ret = subprocess.run(
             shlex.split(cmd),
             input=key + "\n",
+            stderr=subprocess.PIPE,
             text=True,
         )
+        if ret.returncode != 0 and "already loaded" in ret.stderr:
+            # Key ist schon geladen (z.B. von Hand oder nach abgebrochenem Lauf) -> kein Fehler
+            self.logger.info(f"Key für {self.args.target_encrypted_root} ist auf dem Ziel bereits geladen.")
+            return True
         if ret.returncode != 0:
+            self.logger.error(ret.stderr.strip())
             self.logger.error(f"zfs load-key auf dem Ziel für {self.args.target_encrypted_root} fehlgeschlagen.")
             return False
         return True
@@ -528,7 +534,19 @@ class zfsbackup(object):
         sshcmdsudo = f"ssh -T {self.args.sshdest} sudo zfsbackup_receiver"
         cmd = f"{sshcmdsudo} zfs unload-key {self.args.target_encrypted_root}"
         self.logger.debug(f"Unload-key: {cmd}")
-        subprocess.run(shlex.split(cmd))
+        ret = subprocess.run(shlex.split(cmd), stderr=subprocess.PIPE, text=True)
+        if ret.returncode == 0:
+            return
+        fehler = ret.stderr.strip()
+        if "already unloaded" in fehler:
+            # Key war gar nicht geladen -> nichts zu tun
+            self.logger.debug(fehler)
+        elif "is busy" in fehler:
+            # anderes Backup schreibt gerade unterhalb des Key-Roots oder Dataset ist gemountet
+            # -> Key bleibt geladen, das andere Backup entlädt ihn am Ende selbst
+            self.logger.info(f"Key für {self.args.target_encrypted_root} bleibt geladen (in Benutzung): {fehler}")
+        else:
+            self.logger.warning(f"zfs unload-key auf dem Ziel für {self.args.target_encrypted_root} fehlgeschlagen: {fehler}")
     
     def touchfile_handling(self):
         ''' Gibt true zurück, wenn das touchfile-handling nichts gegenteiliges aussagt '''
